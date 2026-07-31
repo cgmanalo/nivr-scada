@@ -9,7 +9,6 @@ from urllib.parse import quote_plus
 from urllib.request import Request, urlopen
 from flask import Flask, jsonify, request, render_template_string
 from flask_cors import CORS
-import paho.mqtt.client as mqtt
 
 app = Flask(__name__)
 CORS(app)
@@ -17,78 +16,75 @@ CORS(app)
 # 🔑 Load secure connection data from Render environment configurations
 AZURE_CONN_STR = os.environ.get("AZURE_IOT_HUB_CONN_STR")
 PI_DEVICE_ID = "RE-01"
+SENDER_DEVICE_ID = "SE-01"
 
-# --- Live Global Memory Bank (Replaces hardcoded placeholders) ---
+# --- Live Global Memory Bank ---
 LIVE_SCADA_DATA = {
     "sender": {"L1": {"V": 0.0, "I": 0.0}, "L2": {"V": 0.0, "I": 0.0}, "L3": {"V": 0.0, "I": 0.0}},
     "receiver": {"voltage": 0.0, "current": 0.0, "active_power": 0.0},
-    "relay_state": "AWAITING TELEMETRY..."
+    "relay_state": "AWAITING FIELD DATA..."
 }
 
 def parse_connection_string(conn_str):
     props = dict(item.split('=', 1) for item in conn_str.split(';'))
     return props.get('HostName'), props.get('SharedAccessKeyName'), props.get('SharedAccessKey')
 
-def generate_sas_token(hub_host, key_name, key_val, expiry_hours=24):
+def generate_sas_token(hub_host, key_name, key_val, target_uri, expiry_hours=1):
     ttl = int(time.time()) + (expiry_hours * 3600)
-    target_uri = quote_plus(f"{hub_host}/devices/{PI_DEVICE_ID}")
-    string_to_sign = f"{target_uri}\n{ttl}"
+    encoded_uri = quote_plus(target_uri)
+    string_to_sign = f"{encoded_uri}\n{ttl}"
     decoded_key = base64.b64decode(key_val)
     signature = hmac.new(decoded_key, string_to_sign.encode('utf-8'), hashlib.sha256).digest()
     encoded_sig = quote_plus(base64.b64encode(signature).decode('utf-8'))
-    return f"SharedAccessSignature sr={target_uri}&sig={encoded_sig}&se={ttl}&skn={key_name}"
+    return f"SharedAccessSignature sr={encoded_uri}&sig={encoded_sig}&se={ttl}&skn={key_name}"
 
-# ================= BACKGROUND LIVE DATA BRIDGE ENGINE =================
+def fetch_twin_data(host, key_name, key_val, device_id):
+    """Fetches device twins directly from Azure backend database"""
+    try:
+        target_uri = f"{host}/twins/{device_id}"
+        sas_token = generate_sas_token(host, key_name, key_val, target_uri)
+        url = f"https://{target_uri}?api-version=2021-04-12"
+        
+        req = Request(url, method="GET")
+        req.add_header("Authorization", sas_token)
+        req.add_header("Content-Type", "application/json")
+        
+        with urlopen(req, timeout=5) as response:
+            return json.loads(response.read().decode('utf-8'))
+    except Exception:
+        return None
 
-def on_mqtt_message(client, userdata, msg):
-    """Intercepts and parses global message routes from your Azure Backplane"""
+def scada_sync_loop():
+    """Background loop that continuously syncs field node twins every 3 seconds"""
     global LIVE_SCADA_DATA
-    try:
-        topic = msg.topic
-        payload = json.loads(msg.payload.decode('utf-8'))
-        
-        # 📡 ROUTE 1: Intercept incoming ESP32 parameters matching your payload structure
-        if "SE-01" in topic or "SE-01" in str(payload.get("device")):
-            if "L1" in payload:
-                LIVE_SCADA_DATA["sender"]["L1"] = payload["L1"]
-                LIVE_SCADA_DATA["sender"]["L2"] = payload["L2"]
-                LIVE_SCADA_DATA["sender"]["L3"] = payload["L3"]
-                
-        # 🔌 ROUTE 2: Intercept incoming Raspberry Pi data frames
-        if "RE-01" in topic or "receiver" in payload:
-            LIVE_SCADA_DATA["receiver"] = payload["receiver"]
-            LIVE_SCADA_DATA["relay_state"] = payload.get("relay_state", "AUTO_ACTIVE")
+    while True:
+        if not AZURE_CONN_STR:
+            time.sleep(5)
+            continue
             
-    except Exception:
-        pass
-
-def azure_telemetry_subscriber():
-    """Service bridge that tracks the dynamic backplane messaging matrix"""
-    if not AZURE_CONN_STR:
-        return
-        
-    try:
-        host, key_name, key_val = parse_connection_string(AZURE_CONN_STR)
-        
-        # Establish service hub client token using administrative iothubowner rights
-        username = f"{host}/{key_name}/?api-version=2021-04-12"
-        sas_token = generate_sas_token(host, key_name, key_val, expiry_hours=720)
-        
-        mqtt_client = mqtt.Client(client_id="SCADA-Global-Service-Monitor", protocol=mqtt.MQTTv311)
-        mqtt_client.username_pw_set(username=username, password=sas_token)
-        mqtt_client.on_message = on_mqtt_message
-        
-        mqtt_client.tls_set_context()
-        mqtt_client.connect(host, 8883, 60)
-        
-        # 💡 UPDATE: Subscribe globally to both telemetry streams and system tracking events
-        mqtt_client.subscribe("$iothub/twin/PATCH/properties/reported/#")
-        mqtt_client.subscribe("messages/devicebound/#")
-        mqtt_client.subscribe("devices/#") 
-        
-        mqtt_client.loop_forever()
-    except Exception:
-        pass
+        try:
+            host, key_name, key_val = parse_connection_string(AZURE_CONN_STR)
+            
+            # 1. Sync values from the ESP32 Sending System
+            sender_twin = fetch_twin_data(host, key_name, key_val, SENDER_DEVICE_ID)
+            if sender_twin and "properties" in sender_twin:
+                reported = sender_twin["properties"].get("reported", {})
+                if "L1" in reported:
+                    LIVE_SCADA_DATA["sender"]["L1"] = reported["L1"]
+                    LIVE_SCADA_DATA["sender"]["L2"] = reported["L2"]
+                    LIVE_SCADA_DATA["sender"]["L3"] = reported["L3"]
+            
+            # 2. Sync values from the Raspberry Pi Receiving System
+            receiver_twin = fetch_twin_data(host, key_name, key_val, PI_DEVICE_ID)
+            if receiver_twin and "properties" in receiver_twin:
+                reported = receiver_twin["properties"].get("reported", {})
+                if "receiver" in reported:
+                    LIVE_SCADA_DATA["receiver"] = reported["receiver"]
+                    LIVE_SCADA_DATA["relay_state"] = reported.get("relay_state", "AUTO_ACTIVE")
+                    
+        except Exception:
+            pass
+        time.sleep(3)
 
 # ================= HTTP WEB INTERFACE =================
 
@@ -119,7 +115,6 @@ HTML_DASHBOARD = """
                 const res = await fetch('/api/telemetry');
                 const data = await res.json();
                 
-                // Live updates pulling directly from your field deployments
                 document.getElementById('s-v').innerText = data.sender.L1.V.toFixed(1) + ' V';
                 document.getElementById('s-i').innerText = data.sender.L1.I.toFixed(2) + ' A';
                 
@@ -195,7 +190,8 @@ def api_send_command():
     action = request.json.get("action")
     try:
         host, key_name, key_val = parse_connection_string(AZURE_CONN_STR)
-        sas_token = generate_sas_token(host, key_name, key_val)
+        target_uri = f"{host}/twins/{PI_DEVICE_ID}"
+        sas_token = generate_sas_token(host, key_name, key_val, target_uri)
         url = f"https://{host}/twins/{PI_DEVICE_ID}/methods?api-version=2021-04-12"
         payload = json.dumps({"methodName": "SetRelay", "responseTimeoutInSeconds": 15, "payload": {"command": action}}).encode('utf-8')
         
@@ -211,6 +207,8 @@ def api_send_command():
         return jsonify({"status": "failed", "message": "Pi is offline or unreachable via Azure."}), 500
 
 if __name__ == '__main__':
-    # Initialize the automated streaming subscriber engine inside an independent background execution task
-    threading.Thread(target=azure_telemetry_subscriber, daemon=True).start()
+    # Initialize background synchronization task loop
+    threading.Thread(target=run_sync := lambda: scada_sync_loop(), daemon=True).start()
     
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host='0.0.0.0', port=port)
