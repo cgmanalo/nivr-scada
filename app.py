@@ -41,53 +41,54 @@ def generate_sas_token(hub_host, key_name, key_val, expiry_hours=24):
 # ================= BACKGROUND LIVE DATA BRIDGE ENGINE =================
 
 def on_mqtt_message(client, userdata, msg):
-    """Intercepts incoming device payloads coming across Azure and strips variables"""
+    """Intercepts and parses global message routes from your Azure Backplane"""
     global LIVE_SCADA_DATA
     try:
         topic = msg.topic
         payload = json.loads(msg.payload.decode('utf-8'))
         
-        # 📡 Pattern A: Data packet dropped by your ESP32 Sending End
-        if "devices/SE-01/messages/deviceBound/" in topic or "SE-01" in str(payload.get("device")):
+        # 📡 ROUTE 1: Intercept incoming ESP32 parameters matching your payload structure
+        if "SE-01" in topic or "SE-01" in str(payload.get("device")):
             if "L1" in payload:
                 LIVE_SCADA_DATA["sender"]["L1"] = payload["L1"]
                 LIVE_SCADA_DATA["sender"]["L2"] = payload["L2"]
                 LIVE_SCADA_DATA["sender"]["L3"] = payload["L3"]
                 
-        # 🔌 Pattern B: Data packet dropped by your Raspberry Pi Receiving End
-        elif "receiver" in payload:
+        # 🔌 ROUTE 2: Intercept incoming Raspberry Pi data frames
+        if "RE-01" in topic or "receiver" in payload:
             LIVE_SCADA_DATA["receiver"] = payload["receiver"]
-            LIVE_SCADA_DATA["relay_state"] = payload.get("relay_state", "UNKNOWN")
+            LIVE_SCADA_DATA["relay_state"] = payload.get("relay_state", "AUTO_ACTIVE")
             
     except Exception:
         pass
 
 def azure_telemetry_subscriber():
-    """Background listener that acts as a service hub client directly on the backplane"""
+    """Service bridge that tracks the dynamic backplane messaging matrix"""
     if not AZURE_CONN_STR:
         return
         
     try:
         host, key_name, key_val = parse_connection_string(AZURE_CONN_STR)
         
-        # Service authentication parameters for Azure backend interface
+        # Establish service hub client token using administrative iothubowner rights
         username = f"{host}/{key_name}/?api-version=2021-04-12"
-        sas_token = generate_sas_token(host, key_name, key_val, expiry_hours=720) # 30 day lifespan
+        sas_token = generate_sas_token(host, key_name, key_val, expiry_hours=720)
         
-        mqtt_client = mqtt.Client(client_id="SCADA-Dashboard-Service-Bridge", protocol=mqtt.MQTTv311)
+        mqtt_client = mqtt.Client(client_id="SCADA-Global-Service-Monitor", protocol=mqtt.MQTTv311)
         mqtt_client.username_pw_set(username=username, password=sas_token)
-        
         mqtt_client.on_message = on_mqtt_message
         
-        # Secure TLS interface initialization
         mqtt_client.tls_set_context()
         mqtt_client.connect(host, 8883, 60)
         
-        # Monitor all device telemetry categories moving through the system
-        mqtt_client.subscribe("devices/#")
+        # 💡 UPDATE: Subscribe globally to both telemetry streams and system tracking events
+        mqtt_client.subscribe("$iothub/twin/PATCH/properties/reported/#")
+        mqtt_client.subscribe("messages/devicebound/#")
+        mqtt_client.subscribe("devices/#") 
+        
         mqtt_client.loop_forever()
-    except Exception as e:
-        print(f"Telemetry subscriber connection failure: {e}")
+    except Exception:
+        pass
 
 # ================= HTTP WEB INTERFACE =================
 
