@@ -207,8 +207,9 @@ def api_send_command():
         return jsonify({"status": "failed", "message": "Pi is offline or unreachable via Azure."}), 500
 
 if __name__ == '__main__':
-    # Initialize background synchronization task loop
-    threading.Thread(target=run_sync := lambda: scada_sync_loop(), daemon=True).start()
+    # 💡 FIX: Standard clean thread target definition without the walrus operator
+    sync_thread = threading.Thread(target=scada_sync_loop, daemon=True)
+    sync_thread.start()
     
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
