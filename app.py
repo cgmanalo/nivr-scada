@@ -20,7 +20,7 @@ SENDER_DEVICE_ID = "SE-01"
 
 # --- Live Global Memory Bank ---
 LIVE_SCADA_DATA = {
-    "sender": {"L1": {"V": 0.0, "I": 0.0}, "L2": {"V": 0.0, "I": 0.0}, "L3": {"V": 0.0, "I": 0.0}},
+    "sender": {"L1": {"V": 100.0, "I": 0.0}, "L2": {"V": 0.0, "I": 0.0}, "L3": {"V": 0.0, "I": 0.0}},
     "receiver": {"voltage": 0.0, "current": 0.0, "active_power": 0.0},
     "relay_state": "AWAITING FIELD DATA..."
 }
