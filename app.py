@@ -55,7 +55,7 @@ def fetch_twin_data(host, key_name, key_val, device_id):
         return None
 
 def scada_sync_loop():
-    """Pulls live telemetry updates by tracking active properties directly"""
+    """Pulls the entire consolidated field station matrix from the Pi's Device Twin"""
     global LIVE_SCADA_DATA
     while True:
         if not AZURE_CONN_STR:
@@ -65,25 +65,24 @@ def scada_sync_loop():
         try:
             host, key_name, key_val = parse_connection_string(AZURE_CONN_STR)
             
-            # Fetch Raspberry Pi status from its reported twin properties
-            receiver_twin = fetch_twin_data(host, key_name, key_val, PI_DEVICE_ID)
-            if receiver_twin and "properties" in receiver_twin:
-                reported = receiver_twin["properties"].get("reported", {})
+            # Fetch the Master Raspberry Pi Twin (RE-01)
+            master_twin = fetch_twin_data(host, key_name, key_val, PI_DEVICE_ID)
+            if master_twin and "properties" in master_twin:
+                reported = master_twin["properties"].get("reported", {})
+                
+                # 1. Map the forwarded ESP32 data structure safely
+                if "sender" in reported:
+                    LIVE_SCADA_DATA["sender"] = reported["sender"]
+                    
+                # 2. Map the local Substation data structure safely
                 if "receiver" in reported:
                     LIVE_SCADA_DATA["receiver"] = reported["receiver"]
-                    LIVE_SCADA_DATA["relay_state"] = reported.get("relay_state", "AUTO_ACTIVE")
-
-            # Fallback wrapper: Keep mock structures active for ESP32 values if stream mapping isn't fully bound yet
-            if LIVE_SCADA_DATA["sender"]["L1"]["V"] == 0.0:
-                LIVE_SCADA_DATA["sender"] = {
-                    "L1": {"V": 224.5, "I": 3.12},
-                    "L2": {"V": 223.1, "I": 2.98},
-                    "L3": {"V": 225.0, "I": 3.05}
-                }
+                    LIVE_SCADA_DATA["relay_state"] = reported.get("relay_state", "SYSTEM ACTIVE")
                     
-        except Exception:
-            pass
+        except Exception as e:
+            print(f"Dashboard sync tracking error: {e}")
         time.sleep(2)
+
 
 
 # ================= HTTP WEB INTERFACE =================
