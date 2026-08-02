@@ -20,7 +20,7 @@ SENDER_DEVICE_ID = "SE-01"
 
 # --- Live Global Memory Bank ---
 LIVE_SCADA_DATA = {
-    "sender": {"L1": {"V": 100.0, "I": 0.0}, "L2": {"V": 0.0, "I": 0.0}, "L3": {"V": 0.0, "I": 0.0}},
+    "sender": {"L1": {"V": 155.0, "I": 0.0}, "L2": {"V": 0.0, "I": 0.0}, "L3": {"V": 0.0, "I": 0.0}},
     "receiver": {"voltage": 0.0, "current": 0.0, "active_power": 0.0},
     "relay_state": "AWAITING FIELD DATA..."
 }
@@ -39,7 +39,6 @@ def generate_sas_token(hub_host, key_name, key_val, target_uri, expiry_hours=1):
     return f"SharedAccessSignature sr={encoded_uri}&sig={encoded_sig}&se={ttl}&skn={key_name}"
 
 def fetch_twin_data(host, key_name, key_val, device_id):
-    """Fetches device twins directly from Azure backend database"""
     try:
         target_uri = f"{host}/twins/{device_id}"
         sas_token = generate_sas_token(host, key_name, key_val, target_uri)
@@ -55,35 +54,37 @@ def fetch_twin_data(host, key_name, key_val, device_id):
         return None
 
 def scada_sync_loop():
-    """Pulls the entire consolidated field station matrix from the Pi's Device Twin"""
+    """Pulls field station parameters with verbose console debugging messages"""
     global LIVE_SCADA_DATA
+    print("🔍 [DEBUG] Global SCADA Background Ingestion Thread Initialized.")
+    
     while True:
         if not AZURE_CONN_STR:
+            print("⚠️ [DEBUG ERROR] AZURE_IOT_HUB_CONN_STR environment variable is EMPTY!")
             time.sleep(5)
             continue
             
         try:
             host, key_name, key_val = parse_connection_string(AZURE_CONN_STR)
             
-            # Fetch the Master Raspberry Pi Twin (RE-01)
+            # Fetch the Master Raspberry Pi Twin
             master_twin = fetch_twin_data(host, key_name, key_val, PI_DEVICE_ID)
-            if master_twin and "properties" in master_twin:
+            
+            if master_twin is not None and "properties" in master_twin:
                 reported = master_twin["properties"].get("reported", {})
                 
-                # 1. Map the forwarded ESP32 data structure safely
+                # Check and map field node registration structures from the Pi
                 if "sender" in reported:
                     LIVE_SCADA_DATA["sender"] = reported["sender"]
                     
-                # 2. Map the local Substation data structure safely
                 if "receiver" in reported:
                     LIVE_SCADA_DATA["receiver"] = reported["receiver"]
                     LIVE_SCADA_DATA["relay_state"] = reported.get("relay_state", "SYSTEM ACTIVE")
                     
         except Exception as e:
-            print(f"Dashboard sync tracking error: {e}")
-        time.sleep(2)
-
-
+            print(f"💥 [DEBUG CRASH] Failure inside sync tracking loop: {str(e)}")
+            
+        time.sleep(3)
 
 # ================= HTTP WEB INTERFACE =================
 
@@ -212,3 +213,4 @@ threading.Thread(target=scada_sync_loop, daemon=True).start()
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
+
