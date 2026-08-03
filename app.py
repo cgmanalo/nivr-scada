@@ -54,44 +54,49 @@ def fetch_twin_data(host, key_name, key_val, device_id):
         return None
 
 def scada_sync_loop():
-    """Pulls field station parameters with verbose console debugging messages"""
     global LIVE_SCADA_DATA
-    print("🔍 [DEBUG] Global SCADA Background Ingestion Thread Initialized.")
-    
+    print("🔍 [CLOUD SCADA] Background thread is actively running...")
     while True:
-        if not AZURE_CONN_STR:
-            print("⚠️ [DEBUG ERROR] AZURE_IOT_HUB_CONN_STR environment variable is EMPTY!")
-            time.sleep(5)
+        if not registry_manager:
+            time.sleep(4)
             continue
             
         try:
+            # Query the live Azure digital twin registry database
             twin = registry_manager.get_twin(PI_DEVICE_ID)
+            
             if twin and twin.properties and twin.properties.reported:
                 reported = twin.properties.reported
                 
+                # 💡 DEBUG PRINT: This will print the exact JSON map Azure sends your server
+                print(f"📦 [AZURE TWIN DATA RAW] -> {json.dumps(reported)}")
+                
+                # Dynamic mapping with fallback protection checks
                 if "sender" in reported:
-                    # 💡 FIXED: Cast numbers to clean string templates before sending to the phone browser
                     s = reported["sender"]
                     LIVE_SCADA_DATA["sender"] = {
-                        "L1": {"V": f"{s['L1']['V']:.1f}", "I": f"{s['L1']['I']:.2f}"},
-                        "L2": {"V": f"{s['L2']['V']:.1f}", "I": f"{s['L2']['I']:.2f}"},
-                        "L3": {"V": f"{s['L3']['V']:.1f}", "I": f"{s['L3']['I']:.2f}"}
+                        "L1": {"V": str(s.get('L1', {}).get('V', 0.0)), "I": str(s.get('L1', {}).get('I', 0.0))},
+                        "L2": {"V": str(s.get('L2', {}).get('V', 0.0)), "I": str(s.get('L2', {}).get('I', 0.0))},
+                        "L3": {"V": str(s.get('L3', {}).get('V', 0.0)), "I": str(s.get('L3', {}).get('I', 0.0))}
                     }
+                else:
+                    # Let's check if the keys are hidden inside an uppercase or nested format
+                    print("⚠️ Key 'sender' not found in root reported layout.")
+                    
                 if "receiver" in reported:
                     r = reported["receiver"]
                     LIVE_SCADA_DATA["receiver"] = {
-                        "voltage": f"{r['voltage']:.1f}",
-                        "current": f"{r['current']:.2f}",
-                        "active_power": f"{r['active_power']:.0f}"
+                        "voltage": str(r.get("voltage", 0.0)),
+                        "current": str(r.get("current", 0.0)),
+                        "active_power": str(r.get("active_power", 0.0))
                     }
                 if "relay_state" in reported:
                     LIVE_SCADA_DATA["relay_state"] = str(reported["relay_state"])
-
                     
         except Exception as e:
-            print(f"💥 [DEBUG CRASH] Failure inside sync tracking loop: {str(e)}")
-            
+            print(f"💥 SDK Ingestion Loop Error: {e}")
         time.sleep(3)
+
 
 # ================= HTTP WEB INTERFACE =================
 
