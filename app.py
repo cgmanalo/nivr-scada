@@ -65,21 +65,28 @@ def scada_sync_loop():
             continue
             
         try:
-            host, key_name, key_val = parse_connection_string(AZURE_CONN_STR)
-            
-            # Fetch the Master Raspberry Pi Twin
-            master_twin = fetch_twin_data(host, key_name, key_val, PI_DEVICE_ID)
-            
-            if master_twin is not None and "properties" in master_twin:
-                reported = master_twin["properties"].get("reported", {})
+            twin = registry_manager.get_twin(PI_DEVICE_ID)
+            if twin and twin.properties and twin.properties.reported:
+                reported = twin.properties.reported
                 
-                # Check and map field node registration structures from the Pi
                 if "sender" in reported:
-                    LIVE_SCADA_DATA["sender"] = reported["sender"]
-                    
+                    # 💡 FIXED: Cast numbers to clean string templates before sending to the phone browser
+                    s = reported["sender"]
+                    LIVE_SCADA_DATA["sender"] = {
+                        "L1": {"V": f"{s['L1']['V']:.1f}", "I": f"{s['L1']['I']:.2f}"},
+                        "L2": {"V": f"{s['L2']['V']:.1f}", "I": f"{s['L2']['I']:.2f}"},
+                        "L3": {"V": f"{s['L3']['V']:.1f}", "I": f"{s['L3']['I']:.2f}"}
+                    }
                 if "receiver" in reported:
-                    LIVE_SCADA_DATA["receiver"] = reported["receiver"]
-                    LIVE_SCADA_DATA["relay_state"] = reported.get("relay_state", "SYSTEM ACTIVE")
+                    r = reported["receiver"]
+                    LIVE_SCADA_DATA["receiver"] = {
+                        "voltage": f"{r['voltage']:.1f}",
+                        "current": f"{r['current']:.2f}",
+                        "active_power": f"{r['active_power']:.0f}"
+                    }
+                if "relay_state" in reported:
+                    LIVE_SCADA_DATA["relay_state"] = str(reported["relay_state"])
+
                     
         except Exception as e:
             print(f"💥 [DEBUG CRASH] Failure inside sync tracking loop: {str(e)}")
@@ -110,20 +117,22 @@ HTML_DASHBOARD = """
         #status-bar { text-align: center; font-weight: bold; padding: 12px; border-radius: 8px; background: #334155; margin-top: 15px; color: #38bdf8; }
     </style>
     <script>
+
         async function updateDashboard() {
             try {
                 const res = await fetch('/api/telemetry');
                 const data = await res.json();
                 
-                document.getElementById('s-v').innerText = data.sender.L1.V.toFixed(1) + ' V';
-                document.getElementById('s-i').innerText = data.sender.L1.I.toFixed(2) + ' A';
+                // 💡 FIXED: Read values directly as clean display strings compiled by the server
+                document.getElementById('s-v').innerText = data.sender.L1.V + ' V';
+                document.getElementById('s-i').innerText = data.sender.L1.I + ' A';
                 
-                document.getElementById('r-v').innerText = data.receiver.voltage.toFixed(1) + ' V';
-                document.getElementById('r-i').innerText = data.receiver.current.toFixed(2) + ' A';
-                document.getElementById('r-p').innerText = data.receiver.active_power.toFixed(0) + ' W';
+                document.getElementById('r-v').innerText = data.receiver.voltage + ' V';
+                document.getElementById('r-i').innerText = data.receiver.current + ' A';
+                document.getElementById('r-p').innerText = data.receiver.active_power + ' W';
                 
                 document.getElementById('status-bar').innerText = "SYSTEM STATE: " + data.relay_state;
-            } catch (e) {}
+            } catch (e) { console.log("Parsing crash cleared."); }
         }
         
         async function sendCommand(state) {
