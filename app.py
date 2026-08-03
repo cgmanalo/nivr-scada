@@ -55,9 +55,11 @@ def fetch_twin_data(host, key_name, key_val, device_id):
 
 def scada_sync_loop():
     global LIVE_SCADA_DATA
-    print("🔍 [CLOUD SCADA] Background thread is actively running...")
+    # 💡 Added flush=True so this prints to your Render terminal immediately
+    print("🔍 [CLOUD SCADA] Background thread is actively running...", flush=True)
     while True:
         if not registry_manager:
+            print("⚠️ [DEBUG ERROR] Registry manager not initialized yet.", flush=True)
             time.sleep(4)
             continue
             
@@ -66,12 +68,13 @@ def scada_sync_loop():
             twin = registry_manager.get_twin(PI_DEVICE_ID)
             
             if twin and twin.properties and twin.properties.reported:
-                reported = twin.properties.reported
+                # 💡 CRITICAL FIX: Convert the Azure object into a clean, readable Python dictionary
+                reported = twin.properties.reported.as_dict()
                 
-                # 💡 DEBUG PRINT: This will print the exact JSON map Azure sends your server
-                print(f"📦 [AZURE TWIN DATA RAW] -> {json.dumps(reported)}")
+                # 💡 Added flush=True to guarantee this prints to your Render log stream instantly
+                print(f"📦 [AZURE TWIN DATA RAW] -> {json.dumps(reported)}", flush=True)
                 
-                # Dynamic mapping with fallback protection checks
+                # Dynamic mapping with fallback protection checks using standard dict extraction
                 if "sender" in reported:
                     s = reported["sender"]
                     LIVE_SCADA_DATA["sender"] = {
@@ -80,8 +83,7 @@ def scada_sync_loop():
                         "L3": {"V": str(s.get('L3', {}).get('V', 0.0)), "I": str(s.get('L3', {}).get('I', 0.0))}
                     }
                 else:
-                    # Let's check if the keys are hidden inside an uppercase or nested format
-                    print("⚠️ Key 'sender' not found in root reported layout.")
+                    print("⚠️ Key 'sender' not found in root reported twin layout.", flush=True)
                     
                 if "receiver" in reported:
                     r = reported["receiver"]
@@ -90,12 +92,20 @@ def scada_sync_loop():
                         "current": str(r.get("current", 0.0)),
                         "active_power": str(r.get("active_power", 0.0))
                     }
+                else:
+                    print("⚠️ Key 'receiver' not found in root reported twin layout.", flush=True)
+                    
                 if "relay_state" in reported:
                     LIVE_SCADA_DATA["relay_state"] = str(reported["relay_state"])
+            else:
+                print("⚠️ Twin data grabbed successfully, but reported properties block is empty.", flush=True)
                     
         except Exception as e:
-            print(f"💥 SDK Ingestion Loop Error: {e}")
+            # 💡 Flushing this allows you to see the exact crash line if Azure rejects the structure
+            print(f"💥 SDK Ingestion Loop Error: {str(e)}", flush=True)
+            
         time.sleep(3)
+
 
 
 # ================= HTTP WEB INTERFACE =================
