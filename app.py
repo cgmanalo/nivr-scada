@@ -102,6 +102,8 @@ def scada_sync_loop():
                         
                     if "relay_state" in reported:
                         LIVE_SCADA_DATA["relay_state"] = str(reported["relay_state"])
+
+                    print(LIVE_SCADA_DATA)
                         
         except Exception as e:
             print(f"💥 HTTP Ingestion Loop Error: {str(e)}", flush=True)
