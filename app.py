@@ -137,18 +137,35 @@ HTML_DASHBOARD = """
     <script>
         async function updateDashboard() {
             try {
+                // 🚀 Fetch the updated dictionary directly from your Render endpoint
                 const res = await fetch('/api/telemetry');
                 const data = await res.json();
                 
-                document.getElementById('s-v').innerText = data.sender.L1.V + ' V';
-                document.getElementById('s-i').innerText = data.sender.L1.I + ' A';
+                // 📡 1. Safely render the ESP32 Sending End data
+                if (data && data.sender && data.sender.L1) {
+                    try {
+                        document.getElementById('s-v').innerText = (data.sender.L1.V || "0.0") + ' V';
+                        document.getElementById('s-i').innerText = (data.sender.L1.I || "0.00") + ' A';
+                    } catch(err) { console.log("L1 card drawing block protected."); }
+                }
                 
-                document.getElementById('r-v').innerText = data.receiver.voltage + ' V';
-                document.getElementById('r-i').innerText = data.receiver.current + ' A';
-                document.getElementById('r-p').innerText = data.receiver.active_power + ' W';
+                // 🔌 2. Safely render the Raspberry Pi Receiving End data
+                if (data && data.receiver) {
+                    try {
+                        document.getElementById('r-v').innerText = (data.receiver.voltage || "0.0") + ' V';
+                        document.getElementById('r-i').innerText = (data.receiver.current || "0.00") + ' A';
+                        document.getElementById('r-p').innerText = (data.receiver.active_power || "0") + ' W';
+                    } catch(err) { console.log("Receiver card drawing block protected."); }
+                }
                 
-                document.getElementById('status-bar').innerText = "SYSTEM STATE: " + data.relay_state;
-            } catch (e) {}
+                // 🛠️ 3. Render the operational relay tracking state
+                if (data && data.relay_state) {
+                    document.getElementById('status-bar').innerText = "SYSTEM STATE: " + data.relay_state;
+                }
+                
+            } catch (e) { 
+                console.log("Global JSON streaming parsing error caught securely."); 
+            }
         }
         
         async function sendCommand(state) {
@@ -162,10 +179,16 @@ HTML_DASHBOARD = """
                 const out = await res.json();
                 alert(out.message);
                 updateDashboard();
-            } catch (error) { alert("Failed to route command."); }
+            } catch (error) { 
+                alert("Failed to route command across the Azure backplane."); 
+            }
         }
+        
+        // Execute an immediate render pass on page launch, then poll every 2 seconds
+        updateDashboard();
         setInterval(updateDashboard, 2000);
     </script>
+
 </head>
 <body>
     <div class="container">
