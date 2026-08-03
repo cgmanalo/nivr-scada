@@ -42,9 +42,9 @@ def generate_sas_token(hub_host, key_name, key_val, target_uri, expiry_hours=1):
     return f"SharedAccessSignature sr={encoded_uri}&sig={encoded_sig}&se={ttl}&skn={key_name}"
 
 def scada_sync_loop():
-    """Pulls the entire consolidated field station matrix from the Pi's Device Twin via HTTP REST"""
+    """Pulls and parses the consolidated field station matrix with full datatype safety protection"""
     global LIVE_SCADA_DATA
-    print("🔍 [CLOUD SCADA] Background thread is actively running...", flush=True)
+    print("🚀 [CLOUD SCADA] Background thread is actively running...", flush=True)
     
     while True:
         if not AZURE_CONN_STR:
@@ -69,23 +69,36 @@ def scada_sync_loop():
                     reported = master_twin["properties"].get("reported", {})
                     print(f"📦 [AZURE TWIN DATA RAW] -> {json.dumps(reported)}", flush=True)
                     
-                    # 1. Map the forwarded ESP32 data structure safely
+                    # 1. Map the forwarded ESP32 data structure safely with type checking
                     if "sender" in reported:
                         s = reported["sender"]
+                        l1 = s.get('L1', {})
+                        l2 = s.get('L2', {})
+                        l3 = s.get('L3', {})
+                        
+                        # Helper to format values cleanly or catch -1 errors
+                        fmt_v = lambda v: f"{float(v):.1f}" if float(v) >= 0 else "0.0"
+                        fmt_i = lambda i: f"{float(i):.2f}" if float(i) >= 0 else "0.00"
+                        
                         LIVE_SCADA_DATA["sender"] = {
-                            "L1": {"V": str(s.get('L1', {}).get('V', 0.0)), "I": str(s.get('L1', {}).get('I', 0.0))},
-                            "L2": {"V": str(s.get('L2', {}).get('V', 0.0)), "I": str(s.get('L2', {}).get('I', 0.0))},
-                            "L3": {"V": str(s.get('L3', {}).get('V', 0.0)), "I": str(s.get('L3', {}).get('I', 0.0))}
+                            "L1": {"V": fmt_v(l1.get('V', 0)), "I": fmt_i(l1.get('I', 0))},
+                            "L2": {"V": fmt_v(l2.get('V', 0)), "I": fmt_i(l2.get('I', 0))},
+                            "L3": {"V": fmt_v(l3.get('V', 0)), "I": fmt_i(l3.get('I', 0))}
                         }
                         
-                    # 2. Map the local Substation data structure safely
+                    # 2. Map the local Substation data structure safely (Catches the negative float math bug)
                     if "receiver" in reported:
                         r = reported["receiver"]
+                        v_rx = float(r.get("voltage", 0.0))
+                        i_rx = float(r.get("current", 0.0))
+                        p_rx = float(r.get("active_power", 0.0))
+                        
                         LIVE_SCADA_DATA["receiver"] = {
-                            "voltage": str(r.get("voltage", 0.0)),
-                            "current": str(r.get("current", 0.0)),
-                            "active_power": str(r.get("active_power", 0.0))
+                            "voltage": f"{v_rx:.1f}" if v_rx >= 0 else "ERR",
+                            "current": f"{i_rx:.2f}" if i_rx >= 0 else "ERR",
+                            "active_power": f"{p_rx:.0f}" if p_rx >= 0 else "ERR"
                         }
+                        
                     if "relay_state" in reported:
                         LIVE_SCADA_DATA["relay_state"] = str(reported["relay_state"])
                         
@@ -93,6 +106,7 @@ def scada_sync_loop():
             print(f"💥 HTTP Ingestion Loop Error: {str(e)}", flush=True)
             
         time.sleep(3)
+
 
 # ================= HTML/JS VISUAL FRONT END =================
 
