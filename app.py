@@ -67,6 +67,7 @@ def scada_sync_loop():
                 
                 if master_twin and "properties" in master_twin:
                     reported = master_twin["properties"].get("reported", {})
+                    print("PRINTING THE DUMP...")
                     print(f"📦 [AZURE TWIN DATA RAW] -> {json.dumps(reported)}", flush=True)
                     
                     # 1. Map the forwarded ESP32 data structure safely with type checking
