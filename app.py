@@ -13,102 +13,88 @@ from flask_cors import CORS
 app = Flask(__name__)
 CORS(app)
 
-# 🔑 Load secure connection data from Render environment configurations
+# 🔑 Read the secure Master Key from the Render environment screen
 AZURE_CONN_STR = os.environ.get("AZURE_IOT_HUB_CONN_STR")
 PI_DEVICE_ID = "RE-01"
-SENDER_DEVICE_ID = "SE-01"
 
 # --- Live Global Memory Bank ---
 LIVE_SCADA_DATA = {
-    "sender": {"L1": {"V": 155.0, "I": 0.0}, "L2": {"V": 0.0, "I": 0.0}, "L3": {"V": 0.0, "I": 0.0}},
+    "sender": {"L1": {"V": 0.0, "I": 0.0}, "L2": {"V": 0.0, "I": 0.0}, "L3": {"V": 0.0, "I": 0.0}},
     "receiver": {"voltage": 0.0, "current": 0.0, "active_power": 0.0},
     "relay_state": "AWAITING FIELD DATA..."
 }
 
 def parse_connection_string(conn_str):
+    """Extracts credentials from standard connection strings safely"""
     props = dict(item.split('=', 1) for item in conn_str.split(';'))
     return props.get('HostName'), props.get('SharedAccessKeyName'), props.get('SharedAccessKey')
 
 def generate_sas_token(hub_host, key_name, key_val, target_uri, expiry_hours=1):
+    """Computes a secure temporary access token for the API call"""
     ttl = int(time.time()) + (expiry_hours * 3600)
     encoded_uri = quote_plus(target_uri)
     string_to_sign = f"{encoded_uri}\n{ttl}"
+    
     decoded_key = base64.b64decode(key_val)
     signature = hmac.new(decoded_key, string_to_sign.encode('utf-8'), hashlib.sha256).digest()
     encoded_sig = quote_plus(base64.b64encode(signature).decode('utf-8'))
+    
     return f"SharedAccessSignature sr={encoded_uri}&sig={encoded_sig}&se={ttl}&skn={key_name}"
 
-def fetch_twin_data(host, key_name, key_val, device_id):
-    try:
-        target_uri = f"{host}/twins/{device_id}"
-        sas_token = generate_sas_token(host, key_name, key_val, target_uri)
-        url = f"https://{target_uri}?api-version=2021-04-12"
-        
-        req = Request(url, method="GET")
-        req.add_header("Authorization", sas_token)
-        req.add_header("Content-Type", "application/json")
-        
-        with urlopen(req, timeout=5) as response:
-            return json.loads(response.read().decode('utf-8'))
-    except Exception:
-        return None
-
 def scada_sync_loop():
+    """Pulls the entire consolidated field station matrix from the Pi's Device Twin via HTTP REST"""
     global LIVE_SCADA_DATA
-    # 💡 Added flush=True so this prints to your Render terminal immediately
     print("🔍 [CLOUD SCADA] Background thread is actively running...", flush=True)
+    
     while True:
-        if not registry_manager:
-            print("⚠️ [DEBUG ERROR] Registry manager not initialized yet.", flush=True)
-            time.sleep(4)
+        if not AZURE_CONN_STR:
+            print("⚠️ [DEBUG ERROR] AZURE_IOT_HUB_CONN_STR environment variable is EMPTY!", flush=True)
+            time.sleep(5)
             continue
             
         try:
-            # Query the live Azure digital twin registry database
-            twin = registry_manager.get_twin(PI_DEVICE_ID)
+            host, key_name, key_val = parse_connection_string(AZURE_CONN_STR)
+            target_uri = f"{host}/twins/{PI_DEVICE_ID}"
+            sas_token = generate_sas_token(host, key_name, key_val, target_uri)
             
-            if twin and twin.properties and twin.properties.reported:
-                # 💡 CRITICAL FIX: Convert the Azure object into a clean, readable Python dictionary
-                reported = twin.properties.reported.as_dict()
+            url = f"https://{target_uri}?api-version=2021-04-12"
+            req = Request(url, method="GET")
+            req.add_header("Authorization", sas_token)
+            req.add_header("Content-Type", "application/json")
+            
+            with urlopen(req, timeout=5) as response:
+                master_twin = json.loads(response.read().decode('utf-8'))
                 
-                # 💡 Added flush=True to guarantee this prints to your Render log stream instantly
-                print(f"📦 [AZURE TWIN DATA RAW] -> {json.dumps(reported)}", flush=True)
-                
-                # Dynamic mapping with fallback protection checks using standard dict extraction
-                if "sender" in reported:
-                    s = reported["sender"]
-                    LIVE_SCADA_DATA["sender"] = {
-                        "L1": {"V": str(s.get('L1', {}).get('V', 0.0)), "I": str(s.get('L1', {}).get('I', 0.0))},
-                        "L2": {"V": str(s.get('L2', {}).get('V', 0.0)), "I": str(s.get('L2', {}).get('I', 0.0))},
-                        "L3": {"V": str(s.get('L3', {}).get('V', 0.0)), "I": str(s.get('L3', {}).get('I', 0.0))}
-                    }
-                else:
-                    print("⚠️ Key 'sender' not found in root reported twin layout.", flush=True)
+                if master_twin and "properties" in master_twin:
+                    reported = master_twin["properties"].get("reported", {})
+                    print(f"📦 [AZURE TWIN DATA RAW] -> {json.dumps(reported)}", flush=True)
                     
-                if "receiver" in reported:
-                    r = reported["receiver"]
-                    LIVE_SCADA_DATA["receiver"] = {
-                        "voltage": str(r.get("voltage", 0.0)),
-                        "current": str(r.get("current", 0.0)),
-                        "active_power": str(r.get("active_power", 0.0))
-                    }
-                else:
-                    print("⚠️ Key 'receiver' not found in root reported twin layout.", flush=True)
-                    
-                if "relay_state" in reported:
-                    LIVE_SCADA_DATA["relay_state"] = str(reported["relay_state"])
-            else:
-                print("⚠️ Twin data grabbed successfully, but reported properties block is empty.", flush=True)
-                    
+                    # 1. Map the forwarded ESP32 data structure safely
+                    if "sender" in reported:
+                        s = reported["sender"]
+                        LIVE_SCADA_DATA["sender"] = {
+                            "L1": {"V": str(s.get('L1', {}).get('V', 0.0)), "I": str(s.get('L1', {}).get('I', 0.0))},
+                            "L2": {"V": str(s.get('L2', {}).get('V', 0.0)), "I": str(s.get('L2', {}).get('I', 0.0))},
+                            "L3": {"V": str(s.get('L3', {}).get('V', 0.0)), "I": str(s.get('L3', {}).get('I', 0.0))}
+                        }
+                        
+                    # 2. Map the local Substation data structure safely
+                    if "receiver" in reported:
+                        r = reported["receiver"]
+                        LIVE_SCADA_DATA["receiver"] = {
+                            "voltage": str(r.get("voltage", 0.0)),
+                            "current": str(r.get("current", 0.0)),
+                            "active_power": str(r.get("active_power", 0.0))
+                        }
+                    if "relay_state" in reported:
+                        LIVE_SCADA_DATA["relay_state"] = str(reported["relay_state"])
+                        
         except Exception as e:
-            # 💡 Flushing this allows you to see the exact crash line if Azure rejects the structure
-            print(f"💥 SDK Ingestion Loop Error: {str(e)}", flush=True)
+            print(f"💥 HTTP Ingestion Loop Error: {str(e)}", flush=True)
             
         time.sleep(3)
 
-
-
-# ================= HTTP WEB INTERFACE =================
+# ================= HTML/JS VISUAL FRONT END =================
 
 HTML_DASHBOARD = """
 <!DOCTYPE html>
@@ -132,13 +118,11 @@ HTML_DASHBOARD = """
         #status-bar { text-align: center; font-weight: bold; padding: 12px; border-radius: 8px; background: #334155; margin-top: 15px; color: #38bdf8; }
     </style>
     <script>
-
         async function updateDashboard() {
             try {
                 const res = await fetch('/api/telemetry');
                 const data = await res.json();
                 
-                // 💡 FIXED: Read values directly as clean display strings compiled by the server
                 document.getElementById('s-v').innerText = data.sender.L1.V + ' V';
                 document.getElementById('s-i').innerText = data.sender.L1.I + ' A';
                 
@@ -147,11 +131,11 @@ HTML_DASHBOARD = """
                 document.getElementById('r-p').innerText = data.receiver.active_power + ' W';
                 
                 document.getElementById('status-bar').innerText = "SYSTEM STATE: " + data.relay_state;
-            } catch (e) { console.log("Parsing crash cleared."); }
+            } catch (e) {}
         }
         
         async function sendCommand(state) {
-            document.getElementById('status-bar').innerText = "TRANSMITTING COMMAND VIA AZURE...";
+            document.getElementById('status-bar').innerText = "TRANSMITTING OVER INTERNET...";
             try {
                 const res = await fetch('/api/command', {
                     method: 'POST',
@@ -170,7 +154,6 @@ HTML_DASHBOARD = """
     <div class="container">
         <h2>⚡ Global SCADA Panel</h2>
         <h5>Mapúa MCL Electrical Engineering Capstone</h5>
-        
         <div class="card">
             <div class="card-title">📡 Transmission Line Entry (ESP32)</div>
             <div class="grid">
@@ -178,7 +161,6 @@ HTML_DASHBOARD = """
                 <div><span style="font-size:11px; color:#64748b;">L1 Current</span><div class="card-value" id="s-i">0.00 A</div></div>
             </div>
         </div>
-
         <div class="card">
             <div class="card-title">🔌 Regulation Substation (Raspberry Pi)</div>
             <div class="grid">
@@ -187,7 +169,6 @@ HTML_DASHBOARD = """
             </div>
             <div style="margin-top:10px;"><span style="font-size:11px; color:#64748b;">Active Load Power</span><div class="card-value" id="r-p">0 W</div></div>
         </div>
-
         <div class="card">
             <div class="card-title">🚨 SCADA Control Interface</div>
             <button class="btn btn-on" onclick="sendCommand('ON')">FORCE RELAYS ACTIVE</button>
@@ -210,12 +191,14 @@ def api_get_telemetry():
 @app.route('/api/command', methods=['POST'])
 def api_send_command():
     if not AZURE_CONN_STR:
-        return jsonify({"status": "failed", "message": "Missing key configuration setup."}), 500
+        return jsonify({"status": "failed", "message": "Missing API Key configuration setup."}), 500
+        
     action = request.json.get("action")
     try:
         host, key_name, key_val = parse_connection_string(AZURE_CONN_STR)
         target_uri = f"{host}/twins/{PI_DEVICE_ID}"
         sas_token = generate_sas_token(host, key_name, key_val, target_uri)
+        
         url = f"https://{host}/twins/{PI_DEVICE_ID}/methods?api-version=2021-04-12"
         payload = json.dumps({"methodName": "SetRelay", "responseTimeoutInSeconds": 15, "payload": {"command": action}}).encode('utf-8')
         
@@ -225,16 +208,3 @@ def api_send_command():
         
         with urlopen(req, timeout=15) as response:
             res_data = json.loads(response.read().decode('utf-8'))
-            execution_msg = res_data.get("payload", {}).get("result", "Action completed.")
-            return jsonify({"status": "success", "message": execution_msg})
-    except Exception:
-        return jsonify({"status": "failed", "message": "Pi is offline or unreachable via Azure."}), 500
-
-# 💡 FORCED GLOBAL INITIALIZATION (Gunicorn Compatible)
-print("🚀 [CLOUD INIT] Spawning global SCADA background syncing thread...")
-threading.Thread(target=scada_sync_loop, daemon=True).start()
-
-if __name__ == '__main__':
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host='0.0.0.0', port=port)
-
