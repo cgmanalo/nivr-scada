@@ -208,3 +208,16 @@ def api_send_command():
         
         with urlopen(req, timeout=15) as response:
             res_data = json.loads(response.read().decode('utf-8'))
+            execution_msg = res_data.get("payload", {}).get("result", "Action completed.")
+            return jsonify({"status": "success", "message": execution_msg})
+            
+    except Exception:
+        return jsonify({"status": "failed", "message": "Pi is offline or unreachable via Azure."}), 500
+
+# 💡 Global scope thread launch (Gunicorn Compatible)
+print("🚀 [CLOUD INIT] Spawning global SCADA background syncing thread...", flush=True)
+threading.Thread(target=scada_sync_loop, daemon=True).start()
+
+if __name__ == '__main__':
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host='0.0.0.0', port=port)
