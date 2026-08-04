@@ -102,6 +102,7 @@ def scada_sync_loop():
                         
                     if "relay_state" in reported:
                         LIVE_SCADA_DATA["relay_state"] = str(reported["relay_state"])
+                        
                     print ("printing LIVE_SCADA_DATA")
                     print(LIVE_SCADA_DATA)
                     print ("printed LIVE_SCADA_DATA")
