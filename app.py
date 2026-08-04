@@ -67,8 +67,8 @@ def scada_sync_loop():
                 
                 if master_twin and "properties" in master_twin:
                     reported = master_twin["properties"].get("reported", {})
-                    print("PRINTING THE DUMP...")
-                    print(f"📦 [AZURE TWIN DATA RAW] -> {json.dumps(reported)}", flush=True)
+                    #print("PRINTING THE DUMP...")
+                    #print(f"📦 [AZURE TWIN DATA RAW] -> {json.dumps(reported)}", flush=True)
                     
                     # 1. Map the forwarded ESP32 data structure safely with type checking
                     if "sender" in reported:
@@ -103,9 +103,9 @@ def scada_sync_loop():
                     if "relay_state" in reported:
                         LIVE_SCADA_DATA["relay_state"] = str(reported["relay_state"])
                         
-                    print ("printing LIVE_SCADA_DATA")
-                    print(LIVE_SCADA_DATA)
-                    print ("printed LIVE_SCADA_DATA")
+                    #print ("printing LIVE_SCADA_DATA")
+                    #print(LIVE_SCADA_DATA)
+                    #print ("printed LIVE_SCADA_DATA")
                         
         except Exception as e:
             print(f"💥 HTTP Ingestion Loop Error: {str(e)}", flush=True)
@@ -121,7 +121,7 @@ HTML_DASHBOARD = """
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Global SCADA Power Panel</title>
+    <title>Transmission Line Dashboard</title>
     <style>
         body { font-family: -apple-system, sans-serif; background: #0f172a; padding: 15px; margin: 0; color: #f8fafc; }
         .container { max-width: 500px; margin: auto; }
@@ -146,7 +146,6 @@ HTML_DASHBOARD = """
                 // 📡 1. Safely render the ESP32 Sending End data
                 if (data && data.sender && data.sender.L1) {
                     try {
-                        //alert(data.sender.L1.V);
                         document.getElementById('s-v').innerText = (data.sender.L1.V || "0.0") + ' V';
                         document.getElementById('s-i').innerText = (data.sender.L1.I || "0.00") + ' A';
                     } catch(err) { console.log("L1 card drawing block protected."); }
@@ -211,17 +210,19 @@ HTML_DASHBOARD = """
 </head>
 <body>
     <div class="container">
-        <h2>⚡ Global SCADA Panel</h2>
-        <h5>Mapúa MCL Electrical Engineering Capstone</h5>
+        <h2>⚡ Transmission Line SCADA Panel</h2>
+        <h5>Kyle Christian V. Sta. Maria and Roneil Janry V. Areza Capstone Project</h5>
+        <h5>Mapúa MCL Electrical Engineering</h5>
+        Kyle Christian V. Sta. Maria and Roneil Janry V. Areza
         <div class="card">
-            <div class="card-title">📡 Transmission Line Entry (ESP32)</div>
+            <div class="card-title">📡 Transmission Sending End (SE-01)</div>
             <div class="grid">
                 <div><span style="font-size:11px; color:#64748b;">L1 Voltage</span><div class="card-value" id="s-v">0.0 V</div></div>
                 <div><span style="font-size:11px; color:#64748b;">L1 Current</span><div class="card-value" id="s-i">0.00 A</div></div>
             </div>
         </div>
         <div class="card">
-            <div class="card-title">🔌 Regulation Substation (Raspberry Pi)</div>
+            <div class="card-title">🔌 Transmission Line Receiving End (RE-01)</div>
             <div class="grid">
                 <div><span style="font-size:11px; color:#64748b;">Line Voltage</span><div class="card-value" id="r-v">0.0 V</div></div>
                 <div><span style="font-size:11px; color:#64748b;">Total Current</span><div class="card-value" id="r-i">0.00 A</div></div>
@@ -229,7 +230,7 @@ HTML_DASHBOARD = """
             <div style="margin-top:10px;"><span style="font-size:11px; color:#64748b;">Active Load Power</span><div class="card-value" id="r-p">0 W</div></div>
         </div>
         <div class="card">
-            <div class="card-title">🚨 SCADA Control Interface</div>
+            <div class="card-title">🚨 Voltage Regulator Relay Control Interface</div>
             <button class="btn btn-on" onclick="sendCommand('ON')">FORCE RELAYS ACTIVE</button>
             <button class="btn btn-off" onclick="sendCommand('OFF')">RELEASE RELAYS / SYSTEM CLEAR</button>
             <div id="status-bar">RELAY OVERRIDE: FETCHING STATE...</div>
