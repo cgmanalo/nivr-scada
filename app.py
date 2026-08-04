@@ -144,7 +144,7 @@ HTML_DASHBOARD = """
                 // 📡 1. Safely render the ESP32 Sending End data
                 if (data && data.sender && data.sender.L1) {
                     try {
-                        alert(data);
+                        alert(data.sender.L1.V);
                         document.getElementById('s-v').innerText = (data.sender.L1.V || "0.0") + ' V';
                         document.getElementById('s-i').innerText = (data.sender.L1.I || "0.00") + ' A';
                     } catch(err) { console.log("L1 card drawing block protected."); }
