@@ -239,12 +239,25 @@ HTML_DASHBOARD = """
 </html>
 """
 
+# ================= HTTP SERVICE ROUTER ENDPOINTS =================
+
 @app.route('/')
 def home():
     return render_template_string(HTML_DASHBOARD)
 
+# 💡 TRACKING FLAG: Ensures the thread only spawns once per worker container
+SYNC_THREAD_STARTED = False
+
 @app.route('/api/telemetry')
 def api_get_telemetry():
+    global SYNC_THREAD_STARTED
+    
+    # If this worker process hasn't started its thread yet, launch it now!
+    if not SYNC_THREAD_STARTED:
+        print("🚀 [WORKER INIT] Launching safe telemetry sync loop inside active web process...", flush=True)
+        threading.Thread(target=scada_sync_loop, daemon=True).start()
+        SYNC_THREAD_STARTED = True
+        
     return jsonify(LIVE_SCADA_DATA)
 
 @app.route('/api/command', methods=['POST'])
@@ -273,10 +286,10 @@ def api_send_command():
     except Exception:
         return jsonify({"status": "failed", "message": "Pi is offline or unreachable via Azure."}), 500
 
-# 💡 Global scope thread launch (Gunicorn Compatible)
-print("🚀 [CLOUD INIT] Spawning global SCADA background syncing thread...", flush=True)
-threading.Thread(target=scada_sync_loop, daemon=True).start()
+
+# 💡 REMOVED: The old global scope thread start line is gone!
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
+
