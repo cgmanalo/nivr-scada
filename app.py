@@ -169,20 +169,36 @@ HTML_DASHBOARD = """
         }
         
         async function sendCommand(state) {
-            document.getElementById('status-bar').innerText = "TRANSMITTING OVER INTERNET...";
+            const statusBar = document.getElementById('status-bar');
+            statusBar.innerText = `TRANSMITTING INTERNET OVERRIDE: FORCE ${state}...`;
+            statusBar.style.color = "#38bdf8"; // Changes to a warning blue shade
+            
             try {
                 const res = await fetch('/api/command', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({action: state})
                 });
+                
                 const out = await res.json();
-                alert(out.message);
-                updateDashboard();
+                
+                // 💡 CRITICAL FIX: Removed the blocking alert() completely!
+                // Instead, print the success log straight to the UI text stream.
+                statusBar.innerText = "✔ AZURE CONFIRMATION: " + out.message;
+                statusBar.style.color = "#10b981"; // Changes text to a success green shade
+                
+                // Execute an immediate telemetry pass now that the UI is unblocked
+                await updateDashboard();
+                
             } catch (error) { 
-                alert("Failed to route command across the Azure backplane."); 
+                statusBar.innerText = "❌ CLOUD ROUTE BLOCKED: SYSTEM UNREACHABLE";
+                statusBar.style.color = "#ef4444"; // Changes text to a warning red shade
+                
+                // Run fallback pass on failure
+                await updateDashboard();
             }
         }
+
         
         // Execute an immediate render pass on page launch, then poll every 2 seconds
         updateDashboard();
