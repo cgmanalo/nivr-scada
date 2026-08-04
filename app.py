@@ -67,8 +67,8 @@ def scada_sync_loop():
                 
                 if master_twin and "properties" in master_twin:
                     reported = master_twin["properties"].get("reported", {})
-                    print("PRINTING THE DUMP...")
-                    print(f"📦 [AZURE TWIN DATA RAW] -> {json.dumps(reported)}", flush=True)
+                    #print("PRINTING THE DUMP...")
+                    #print(f"📦 [AZURE TWIN DATA RAW] -> {json.dumps(reported)}", flush=True)
                     
                     # 1. Map the forwarded ESP32 data structure safely with type checking
                     if "sender" in reported:
@@ -102,8 +102,9 @@ def scada_sync_loop():
                         
                     if "relay_state" in reported:
                         LIVE_SCADA_DATA["relay_state"] = str(reported["relay_state"])
-
+                    print ("printing LIVE_SCADA_DATA")
                     print(LIVE_SCADA_DATA)
+                    print ("printed LIVE_SCADA_DATA")
                         
         except Exception as e:
             print(f"💥 HTTP Ingestion Loop Error: {str(e)}", flush=True)
@@ -144,7 +145,7 @@ HTML_DASHBOARD = """
                 // 📡 1. Safely render the ESP32 Sending End data
                 if (data && data.sender && data.sender.L1) {
                     try {
-                        alert(data.sender.L1.V);
+                        //alert(data.sender.L1.V);
                         document.getElementById('s-v').innerText = (data.sender.L1.V || "0.0") + ' V';
                         document.getElementById('s-i').innerText = (data.sender.L1.I || "0.00") + ' A';
                     } catch(err) { console.log("L1 card drawing block protected."); }
