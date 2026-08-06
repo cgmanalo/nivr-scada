@@ -20,7 +20,8 @@ PI_DEVICE_ID = "RE-01"
 # --- Live Global Memory Bank ---
 LIVE_SCADA_DATA = {
     "sender": {"L1": {"V": 0.0, "I": 0.0}, "L2": {"V": 0.0, "I": 0.0}, "L3": {"V": 0.0, "I": 0.0}},
-    "receiver": {"voltage": 0.0, "current": 0.0, "active_power": 0.0},
+    "receiver": {"L1": {"V": 0.0, "I": 0.0}, "L2": {"V": 0.0, "I": 0.0}, "L3": {"V": 0.0, "I": 0.0}},
+    #"receiver": {"voltage": 0.0, "current": 0.0, "active_power": 0.0},
     "relay_state": "AWAITING FIELD DATA..."
 }
 
@@ -69,18 +70,16 @@ def scada_sync_loop():
                     reported = master_twin["properties"].get("reported", {})
                     #print("PRINTING THE DUMP...")
                     #print(f"📦 [AZURE TWIN DATA RAW] -> {json.dumps(reported)}", flush=True)
-                    
                     # 1. Map the forwarded ESP32 data structure safely with type checking
+                    
+                    # Helper to format values cleanly or catch -1 errors
+                    fmt_v = lambda v: f"{float(v):.1f}" if float(v) >= 0 else "0.0"
+                    fmt_i = lambda i: f"{float(i):.2f}" if float(i) >= 0 else "0.00"
                     if "sender" in reported:
                         s = reported["sender"]
                         l1 = s.get('L1', {})
                         l2 = s.get('L2', {})
                         l3 = s.get('L3', {})
-                        
-                        # Helper to format values cleanly or catch -1 errors
-                        fmt_v = lambda v: f"{float(v):.1f}" if float(v) >= 0 else "0.0"
-                        fmt_i = lambda i: f"{float(i):.2f}" if float(i) >= 0 else "0.00"
-                        
                         LIVE_SCADA_DATA["sender"] = {
                             "L1": {"V": fmt_v(l1.get('V', 0)), "I": fmt_i(l1.get('I', 0))},
                             "L2": {"V": fmt_v(l2.get('V', 0)), "I": fmt_i(l2.get('I', 0))},
@@ -90,6 +89,15 @@ def scada_sync_loop():
                     # 2. Map the local Substation data structure safely (Catches the negative float math bug)
                     if "receiver" in reported:
                         r = reported["receiver"]
+                        l1 = r.get('L1', {})
+                        l2 = r.get('L2', {})
+                        l3 = r.get('L3', {})                      
+                        LIVE_SCADA_DATA["receiver"] = {
+                            "L1": {"V": fmt_v(l1.get('V', 0)), "I": fmt_i(l1.get('I', 0))},
+                            "L2": {"V": fmt_v(l2.get('V', 0)), "I": fmt_i(l2.get('I', 0))},
+                            "L3": {"V": fmt_v(l3.get('V', 0)), "I": fmt_i(l3.get('I', 0))}
+                        }
+                        """
                         v_rx = float(r.get("voltage", 0.0))
                         i_rx = float(r.get("current", 0.0))
                         p_rx = float(r.get("active_power", 0.0))
@@ -99,14 +107,10 @@ def scada_sync_loop():
                             "current": f"{i_rx:.2f}" if i_rx >= 0 else "ERR",
                             "active_power": f"{p_rx:.0f}" if p_rx >= 0 else "ERR"
                         }
-                        
+                        """
                     if "relay_state" in reported:
                         LIVE_SCADA_DATA["relay_state"] = str(reported["relay_state"])
-                        
-                    #print ("printing LIVE_SCADA_DATA")
-                    #print(LIVE_SCADA_DATA)
-                    #print ("printed LIVE_SCADA_DATA")
-                        
+                                               
         except Exception as e:
             print(f"💥 HTTP Ingestion Loop Error: {str(e)}", flush=True)
             
