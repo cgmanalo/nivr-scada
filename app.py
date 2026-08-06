@@ -150,20 +150,28 @@ HTML_DASHBOARD = """
                 // 📡 1. Safely render the ESP32 Sending End data
                 if (data && data.sender && data.sender.L1) {
                     try {
-                        document.getElementById('s-v').innerText = (data.sender.L1.V || "0.00") + ' V';
-                        document.getElementById('s-i').innerText = (data.sender.L1.I || "0.00") + ' A';
-                        document.getElementById('s-p').innerText = (data.sender.L1.P || "0.00") + ' W';
-                        document.getElementById('s-q').innerText = (data.sender.L1.Q || "0.00") + ' VAR';
+                        document.getElementById('s1-v').innerText = (data.sender.L1.V || "0.00") + ' V';
+                        document.getElementById('s1-i').innerText = (data.sender.L1.I || "0.00") + ' A';
+                        document.getElementById('s1-p').innerText = (data.sender.L1.P || "0.00") + ' W';
+                        document.getElementById('s1-q').innerText = (data.sender.L1.Q || "0.00") + ' VAR';
+                        document.getElementById('s2-v').innerText = (data.sender.L2.V || "0.00") + ' V';
+                        document.getElementById('s2-i').innerText = (data.sender.L2.I || "0.00") + ' A';
+                        document.getElementById('s2-p').innerText = (data.sender.L2.P || "0.00") + ' W';
+                        document.getElementById('s2-q').innerText = (data.sender.L2.Q || "0.00") + ' VAR';
                     } catch(err) { console.log("L1 card drawing block protected."); }
                 }
                 
                 // 🔌 2. Safely render the Raspberry Pi Receiving End data
                 if (data && data.receiver) {
                     try {
-                        document.getElementById('r-v').innerText = (data.receiver.L1.V || "0.00") + ' V';
-                        document.getElementById('r-i').innerText = (data.receiver.L1.I || "0.00") + ' A';
-                        document.getElementById('r-p').innerText = (data.receiver.L1.P || "0.00") + ' W';
-                        document.getElementById('r-q').innerText = (data.receiver.L1.Q || "0.00") + ' VAR';
+                        document.getElementById('r1-v').innerText = (data.receiver.L1.V || "0.00") + ' V';
+                        document.getElementById('r1-i').innerText = (data.receiver.L1.I || "0.00") + ' A';
+                        document.getElementById('r1-p').innerText = (data.receiver.L1.P || "0.00") + ' W';
+                        document.getElementById('r1-q').innerText = (data.receiver.L1.Q || "0.00") + ' VAR';
+                        document.getElementById('r2-v').innerText = (data.receiver.L2.V || "0.00") + ' V';
+                        document.getElementById('r2-i').innerText = (data.receiver.L2.I || "0.00") + ' A';
+                        document.getElementById('r2-p').innerText = (data.receiver.L2.P || "0.00") + ' W';
+                        document.getElementById('r2-q').innerText = (data.receiver.L2.Q || "0.00") + ' VAR';
                     } catch(err) { console.log("Receiver card drawing block protected."); }
                 }
                 
@@ -223,23 +231,31 @@ HTML_DASHBOARD = """
         <div class="card">
             <div class="card-title">📡 Transmission Sending End (SE-01)</div>
             <div class="grid">
-                <div><span style="font-size:11px; color:#64748b;">L1 Voltage</span><div class="card-value" id="s-v">0.00 V</div></div>
-                <div><span style="font-size:11px; color:#64748b;">L1 Current</span><div class="card-value" id="s-i">0.00 A</div></div>
+                <div><span style="font-size:11px; color:#64748b;">L1 Voltage</span><div class="card-value" id="s1-v">0.00 V</div></div>
+                <div><span style="font-size:11px; color:#64748b;">L1 Current</span><div class="card-value" id="s1-i">0.00 A</div></div>
+                <div><span style="font-size:11px; color:#64748b;">L1 Active Power</span><div class="card-value" id="s1-p">0.00 V</div></div>
+                <div><span style="font-size:11px; color:#64748b;">L1 Reactive Power</span><div class="card-value" id="s1-q">0.00 A</div></div>
             </div>
             <div class="grid">
-                <div><span style="font-size:11px; color:#64748b;">L1 Active Power</span><div class="card-value" id="s-p">0.00 V</div></div>
-                <div><span style="font-size:11px; color:#64748b;">L1 Reactive Power</span><div class="card-value" id="s-q">0.00 A</div></div>
+                <div><span style="font-size:11px; color:#64748b;">L2 Voltage</span><div class="card-value" id="s2-v">0.00 V</div></div>
+                <div><span style="font-size:11px; color:#64748b;">L2 Current</span><div class="card-value" id="s2-i">0.00 A</div></div>
+                <div><span style="font-size:11px; color:#64748b;">L2 Active Power</span><div class="card-value" id="s2-p">0.00 V</div></div>
+                <div><span style="font-size:11px; color:#64748b;">L2 Reactive Power</span><div class="card-value" id="s2-q">0.00 A</div></div>
             </div>
         </div>
         <div class="card">
             <div class="card-title">🔌 Transmission Line Receiving End (RE-01)</div>
             <div class="grid">
-                <div><span style="font-size:11px; color:#64748b;">L1 Voltage</span><div class="card-value" id="r-v">0.00 V</div></div>
-                <div><span style="font-size:11px; color:#64748b;">L1 Current</span><div class="card-value" id="r-i">0.00 A</div></div>
+                <div><span style="font-size:11px; color:#64748b;">L1 Voltage</span><div class="card-value" id="r1-v">0.00 V</div></div>
+                <div><span style="font-size:11px; color:#64748b;">L1 Current</span><div class="card-value" id="r1-i">0.00 A</div></div>
+                <div><span style="font-size:11px; color:#64748b;">L1 Active Power</span><div class="card-value" id="r1-p">0.00 V</div></div>
+                <div><span style="font-size:11px; color:#64748b;">L1 Reactive Power</span><div class="card-value" id="r1-q">0.00 A</div></div>
             </div>
             <div class="grid">
-                <div><span style="font-size:11px; color:#64748b;">L1 Active Power</span><div class="card-value" id="r-p">0.00 V</div></div>
-                <div><span style="font-size:11px; color:#64748b;">L1 Reactive Power</span><div class="card-value" id="r-q">0.00 A</div></div>
+                <div><span style="font-size:11px; color:#64748b;">L2 Voltage</span><div class="card-value" id="r2-v">0.00 V</div></div>
+                <div><span style="font-size:11px; color:#64748b;">L2 Current</span><div class="card-value" id="r2-i">0.00 A</div></div>
+                <div><span style="font-size:11px; color:#64748b;">L2 Active Power</span><div class="card-value" id="r2-p">0.00 V</div></div>
+                <div><span style="font-size:11px; color:#64748b;">L2 Reactive Power</span><div class="card-value" id="r2-q">0.00 A</div></div>
             </div>
         </div>
         <div class="card">
