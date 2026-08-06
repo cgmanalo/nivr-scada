@@ -158,9 +158,8 @@ HTML_DASHBOARD = """
                 // 🔌 2. Safely render the Raspberry Pi Receiving End data
                 if (data && data.receiver) {
                     try {
-                        document.getElementById('r-v').innerText = (data.receiver.voltage || "0.0") + ' V';
-                        document.getElementById('r-i').innerText = (data.receiver.current || "0.00") + ' A';
-                        document.getElementById('r-p').innerText = (data.receiver.active_power || "0") + ' W';
+                        document.getElementById('r-v').innerText = (data.receiver.L1.V || "0.0") + ' V';
+                        document.getElementById('r-i').innerText = (data.receiver.L1.I || "0.00") + ' A';
                     } catch(err) { console.log("Receiver card drawing block protected."); }
                 }
                 
@@ -227,10 +226,9 @@ HTML_DASHBOARD = """
         <div class="card">
             <div class="card-title">🔌 Transmission Line Receiving End (RE-01)</div>
             <div class="grid">
-                <div><span style="font-size:11px; color:#64748b;">Line Voltage</span><div class="card-value" id="r-v">0.0 V</div></div>
-                <div><span style="font-size:11px; color:#64748b;">Total Current</span><div class="card-value" id="r-i">0.00 A</div></div>
+                <div><span style="font-size:11px; color:#64748b;">L1 Voltage</span><div class="card-value" id="r-v">0.0 V</div></div>
+                <div><span style="font-size:11px; color:#64748b;">L1 Current</span><div class="card-value" id="r-i">0.00 A</div></div>
             </div>
-            <div style="margin-top:10px;"><span style="font-size:11px; color:#64748b;">Active Load Power</span><div class="card-value" id="r-p">0 W</div></div>
         </div>
         <div class="card">
             <div class="card-title">🚨 Voltage Regulator Relay Control Interface</div>
