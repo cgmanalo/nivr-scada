@@ -125,7 +125,17 @@ HTML_DASHBOARD = """
         .card { background: #1e293b; padding: 20px; border-radius: 12px; margin-bottom: 15px; border: 1px solid #334155; }
         .card-title { font-size: 11px; color: #38bdf8; text-transform: uppercase; font-weight: bold; }
         .card-value { font-size: 26px; font-weight: bold; color: #f8fafc; margin-top: 5px; }
-        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 10px; }
+        #.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 10px; }
+        .grid { 
+            display: grid; 
+            grid-template-columns: repeat(4, 1fr); /* 💡 Forces exactly 4 columns in one line */
+            gap: 10px; 
+            margin-top: 15px; 
+            border-bottom: 1px solid #334155; /* Visual separator line between L1, L2, L3 */
+            padding-bottom: 10px;
+        }
+        /* Remove the bottom border from the last row so it looks clean */
+        .grid:last-of-type { border-bottom: none; }       
         .btn { width: 100%; padding: 14px; font-size: 15px; font-weight: bold; border: none; border-radius: 8px; color: white; cursor: pointer; margin-top: 10px; }
         .btn-on { background: #10b981; }
         .btn-off { background: #ef4444; }
