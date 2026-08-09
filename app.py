@@ -1,3 +1,8 @@
+"""
+git add app.py
+git commit -m "Migrate background thread initiation into route context to bypass gunicorn fork constraints"
+git push origin main
+"""
 import os
 import json
 import time
@@ -21,7 +26,6 @@ PI_DEVICE_ID = "RE-01"
 LIVE_SCADA_DATA = {
     "sender": {"L1": {"V": 0.0, "I": 0.0}, "L2": {"V": 0.0, "I": 0.0}, "L3": {"V": 0.0, "I": 0.0}},
     "receiver": {"L1": {"V": 0.0, "I": 0.0}, "L2": {"V": 0.0, "I": 0.0}, "L3": {"V": 0.0, "I": 0.0}},
-    #"receiver": {"voltage": 0.0, "current": 0.0, "active_power": 0.0},
     "relay_state": "AWAITING FIELD DATA..."
 }
 
@@ -68,9 +72,6 @@ def scada_sync_loop():
                 
                 if master_twin and "properties" in master_twin:
                     reported = master_twin["properties"].get("reported", {})
-                    #print("PRINTING THE DUMP...")
-                    #print(f"📦 [AZURE TWIN DATA RAW] -> {json.dumps(reported)}", flush=True)
-                    # 1. Map the forwarded ESP32 data structure safely with type checking
                     
                     # Helper to format values cleanly or catch -1 errors
                     fmt_v = lambda v: f"{float(v):.1f}" if float(v) >= 0 else "0.0"
@@ -97,17 +98,7 @@ def scada_sync_loop():
                             "L2": {"V": fmt_v(l2.get('V', 0)), "I": fmt_i(l2.get('I', 0))},
                             "L3": {"V": fmt_v(l3.get('V', 0)), "I": fmt_i(l3.get('I', 0))}
                         }
-                        """
-                        v_rx = float(r.get("voltage", 0.0))
-                        i_rx = float(r.get("current", 0.0))
-                        p_rx = float(r.get("active_power", 0.0))
-                        
-                        LIVE_SCADA_DATA["receiver"] = {
-                            "voltage": f"{v_rx:.1f}" if v_rx >= 0 else "ERR",
-                            "current": f"{i_rx:.2f}" if i_rx >= 0 else "ERR",
-                            "active_power": f"{p_rx:.0f}" if p_rx >= 0 else "ERR"
-                        }
-                        """
+
                     if "relay_state" in reported:
                         LIVE_SCADA_DATA["relay_state"] = str(reported["relay_state"])
                                                
@@ -158,7 +149,11 @@ HTML_DASHBOARD = """
                         document.getElementById('s2-i').innerText = (data.sender.L2.I || "0.00") + ' A';
                         document.getElementById('s2-p').innerText = (data.sender.L2.P || "0.00") + ' W';
                         document.getElementById('s2-q').innerText = (data.sender.L2.Q || "0.00") + ' VAR';
-                    } catch(err) { console.log("L1 card drawing block protected."); }
+                        document.getElementById('s3-v').innerText = (data.sender.L3.V || "0.00") + ' V';
+                        document.getElementById('s3-i').innerText = (data.sender.L3.I || "0.00") + ' A';
+                        document.getElementById('s3-p').innerText = (data.sender.L3.P || "0.00") + ' W';
+                        document.getElementById('s3-q').innerText = (data.sender.L3.Q || "0.00") + ' VAR';
+                    } catch(err) { console.log("Sender card drawing block protected."); }
                 }
                 
                 // 🔌 2. Safely render the Raspberry Pi Receiving End data
@@ -172,6 +167,10 @@ HTML_DASHBOARD = """
                         document.getElementById('r2-i').innerText = (data.receiver.L2.I || "0.00") + ' A';
                         document.getElementById('r2-p').innerText = (data.receiver.L2.P || "0.00") + ' W';
                         document.getElementById('r2-q').innerText = (data.receiver.L2.Q || "0.00") + ' VAR';
+                        document.getElementById('r3-v').innerText = (data.receiver.L3.V || "0.00") + ' V';
+                        document.getElementById('r3-i').innerText = (data.receiver.L3.I || "0.00") + ' A';
+                        document.getElementById('r3-p').innerText = (data.receiver.L3.P || "0.00") + ' W';
+                        document.getElementById('r3-q').innerText = (data.receiver.L3.Q || "0.00") + ' VAR';
                     } catch(err) { console.log("Receiver card drawing block protected."); }
                 }
                 
@@ -242,6 +241,12 @@ HTML_DASHBOARD = """
                 <div><span style="font-size:11px; color:#64748b;">L2 Active Power</span><div class="card-value" id="s2-p">0.00 V</div></div>
                 <div><span style="font-size:11px; color:#64748b;">L2 Reactive Power</span><div class="card-value" id="s2-q">0.00 A</div></div>
             </div>
+            <div class="grid">
+                <div><span style="font-size:11px; color:#64748b;">L3 Voltage</span><div class="card-value" id="s3-v">0.00 V</div></div>
+                <div><span style="font-size:11px; color:#64748b;">L3 Current</span><div class="card-value" id="s3-i">0.00 A</div></div>
+                <div><span style="font-size:11px; color:#64748b;">L3 Active Power</span><div class="card-value" id="s3-p">0.00 V</div></div>
+                <div><span style="font-size:11px; color:#64748b;">L3 Reactive Power</span><div class="card-value" id="s3-q">0.00 A</div></div>
+            </div>
         </div>
         <div class="card">
             <div class="card-title">🔌 Transmission Line Receiving End (RE-01)</div>
@@ -256,6 +261,12 @@ HTML_DASHBOARD = """
                 <div><span style="font-size:11px; color:#64748b;">L2 Current</span><div class="card-value" id="r2-i">0.00 A</div></div>
                 <div><span style="font-size:11px; color:#64748b;">L2 Active Power</span><div class="card-value" id="r2-p">0.00 V</div></div>
                 <div><span style="font-size:11px; color:#64748b;">L2 Reactive Power</span><div class="card-value" id="r2-q">0.00 A</div></div>
+            </div>
+            <div class="grid">
+                <div><span style="font-size:11px; color:#64748b;">L3 Voltage</span><div class="card-value" id="r3-v">0.00 V</div></div>
+                <div><span style="font-size:11px; color:#64748b;">L3 Current</span><div class="card-value" id="r3-i">0.00 A</div></div>
+                <div><span style="font-size:11px; color:#64748b;">L3 Active Power</span><div class="card-value" id="r3-p">0.00 V</div></div>
+                <div><span style="font-size:11px; color:#64748b;">L3 Reactive Power</span><div class="card-value" id="r3-q">0.00 A</div></div>
             </div>
         </div>
         <div class="card">
