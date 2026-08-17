@@ -64,14 +64,13 @@ def scada_sync_loop():
                     reported = master_twin["properties"].get("reported", {})
                     print(f"📦 [AZURE TWIN DATA RAW] -> {json.dumps(reported)}", flush=True)
                     
-                    # Read directly from clean, flat keys
                     LIVE_SCADA_DATA.update({
-                        "s1_v": str(reported.get("s_L1_V", "0.0")), "s1_i": str(reported.get("s_L1_I", "0.00")), "s1_p": str(reported.get("s_L1_P", "0")), "s1_q": str(reported.get("s_L1_Q", "0")),
-                        "s2_v": str(reported.get("s_L2_V", "0.0")), "s2_i": str(reported.get("s_L2_I", "0.00")), "s2_p": str(reported.get("s_L2_P", "0")), "s2_q": str(reported.get("s_L2_Q", "0")),
-                        "s3_v": str(reported.get("s_L3_V", "0.0")), "s3_i": str(reported.get("s_L3_I", "0.00")), "s3_p": str(reported.get("s_L3_P", "0")), "s3_q": str(reported.get("s_L3_Q", "0")),
-                        "r1_v": str(reported.get("r_L1_V", "0.0")), "r1_i": str(reported.get("r_L1_I", "0.00")), "r1_p": str(reported.get("r_L1_P", "0")), "r1_q": str(reported.get("r_L1_Q", "0")),
-                        "r2_v": str(reported.get("r_L2_V", "0.0")), "r2_i": str(reported.get("r_L2_I", "0.00")), "r2_p": str(reported.get("r_L2_P", "0")), "r2_q": str(reported.get("r_L2_Q", "0")),
-                        "r3_v": str(reported.get("r_L3_V", "0.0")), "r3_i": str(reported.get("r_L3_I", "0.00")), "r3_p": str(reported.get("r_L3_P", "0")), "r3_q": str(reported.get("r_L3_Q", "0")),
+                        "s1_v": str(reported.get("s1_v", "0.0")), "s1_i": str(reported.get("s1_i", "0.00")), "s1_p": str(reported.get("s1_p", "0")), "s1_q": str(reported.get("s1_q", "0")),
+                        "s2_v": str(reported.get("s2_v", "0.0")), "s2_i": str(reported.get("s2_i", "0.00")), "s2_p": str(reported.get("s2_p", "0")), "s2_q": str(reported.get("s2_q", "0")),
+                        "s3_v": str(reported.get("s3_v", "0.0")), "s3_i": str(reported.get("s3_i", "0.00")), "s3_p": str(reported.get("s3_p", "0")), "s3_q": str(reported.get("s3_q", "0")),
+                        "r1_v": str(reported.get("r1_v", "0.0")), "r1_i": str(reported.get("r1_i", "0.00")), "r1_p": str(reported.get("r1_p", "0")), "r1_q": str(reported.get("r1_q", "0")),
+                        "r2_v": str(reported.get("r2_v", "0.0")), "r2_i": str(reported.get("r2_i", "0.00")), "r2_p": str(reported.get("r2_p", "0")), "r2_q": str(reported.get("r2_q", "0")),
+                        "r3_v": str(reported.get("r3_v", "0.0")), "r3_i": str(reported.get("r3_i", "0.00")), "r3_p": str(reported.get("r3_p", "0")), "r3_q": str(reported.get("r3_q", "0")),
                         "relay_state": str(reported.get("relay_state", "SYSTEM READY"))
                     })
         except Exception as e:
@@ -229,6 +228,7 @@ SYNC_THREAD_STARTED = False
 def api_get_telemetry():
     global SYNC_THREAD_STARTED
     if not SYNC_THREAD_STARTED:
+        print("🚀 [WORKER INIT] Launching safe telemetry sync loop inside active web process...", flush=True)
         threading.Thread(target=scada_sync_loop, daemon=True).start()
         SYNC_THREAD_STARTED = True
     return jsonify(LIVE_SCADA_DATA)
