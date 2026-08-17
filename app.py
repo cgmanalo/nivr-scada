@@ -1,9 +1,3 @@
-"""
-git add app.py
-git commit -m "Migrate background thread initiation into route context to bypass gunicorn fork constraints"
-git push origin main
-"""
-
 import os
 import json
 import time
@@ -23,10 +17,14 @@ CORS(app)
 AZURE_CONN_STR = os.environ.get("AZURE_IOT_HUB_CONN_STR")
 PI_DEVICE_ID = "RE-01"
 
-# --- Live Global Memory Bank ---
+# --- Live Global Memory Bank (Stores flat keys processed for UI rendering) ---
 LIVE_SCADA_DATA = {
-    "sender": {"L1": {"V": 0.0, "I": 0.0}, "L2": {"V": 0.0, "I": 0.0}, "L3": {"V": 0.0, "I": 0.0}},
-    "receiver": {"L1": {"V": 0.0, "I": 0.0}, "L2": {"V": 0.0, "I": 0.0}, "L3": {"V": 0.0, "I": 0.0}},
+    "s1_v": "0.0", "s1_i": "0.00", "s1_p": "0", "s1_q": "0",
+    "s2_v": "0.0", "s2_i": "0.00", "s2_p": "0", "s2_q": "0",
+    "s3_v": "0.0", "s3_i": "0.00", "s3_p": "0", "s3_q": "0",
+    "r1_v": "0.0", "r1_i": "0.00", "r1_p": "0", "r1_q": "0",
+    "r2_v": "0.0", "r2_i": "0.00", "r2_p": "0", "r2_q": "0",
+    "r3_v": "0.0", "r3_i": "0.00", "r3_p": "0", "r3_q": "0",
     "relay_state": "AWAITING FIELD DATA..."
 }
 
@@ -48,7 +46,7 @@ def generate_sas_token(hub_host, key_name, key_val, target_uri, expiry_hours=1):
     return f"SharedAccessSignature sr={encoded_uri}&sig={encoded_sig}&se={ttl}&skn={key_name}"
 
 def scada_sync_loop():
-    """Pulls and parses the consolidated field station matrix with full datatype safety protection"""
+    """Pulls the flat field parameters from the Pi's Device Twin via HTTP REST"""
     global LIVE_SCADA_DATA
     print("🚀 [CLOUD SCADA] Background thread is actively running...", flush=True)
     
@@ -73,41 +71,45 @@ def scada_sync_loop():
                 
                 if master_twin and "properties" in master_twin:
                     reported = master_twin["properties"].get("reported", {})
+                    print(f"📦 [AZURE TWIN DATA RAW] -> {json.dumps(reported)}", flush=True)
                     
-                    # Helper to format values cleanly or catch -1 errors
-                    fmt_v = lambda v: f"{float(v):.1f}" if float(v) >= 0 else "0.0"
-                    fmt_i = lambda i: f"{float(i):.2f}" if float(i) >= 0 else "0.00"
-                    if "sender" in reported:
-                        s = reported["sender"]
-                        l1 = s.get('L1', {})
-                        l2 = s.get('L2', {})
-                        l3 = s.get('L3', {})
-                        LIVE_SCADA_DATA["sender"] = {
-                            "L1": {"V": fmt_v(l1.get('V', 0)), "I": fmt_i(l1.get('I', 0))},
-                            "L2": {"V": fmt_v(l2.get('V', 0)), "I": fmt_i(l2.get('I', 0))},
-                            "L3": {"V": fmt_v(l3.get('V', 0)), "I": fmt_i(l3.get('I', 0))}
-                        }
+                    # Intercept the flattened keys directly from the twin registry database without structural blocks
+                    LIVE_SCADA_DATA["s1_v"] = str(reported.get("s_L1_V", "0.0"))
+                    LIVE_SCADA_DATA["s1_i"] = str(reported.get("s_L1_I", "0.00"))
+                    LIVE_SCADA_DATA["s1_p"] = str(reported.get("s_L1_P", "0"))
+                    LIVE_SCADA_DATA["s1_q"] = str(reported.get("s_L1_Q", "0"))
+                    
+                    LIVE_SCADA_DATA["s2_v"] = str(reported.get("s_L2_V", "0.0"))
+                    LIVE_SCADA_DATA["s2_i"] = str(reported.get("s_L2_I", "0.00"))
+                    LIVE_SCADA_DATA["s2_p"] = str(reported.get("s_L2_P", "0"))
+                    LIVE_SCADA_DATA["s2_q"] = str(reported.get("s_L2_Q", "0"))
+                    
+                    LIVE_SCADA_DATA["s3_v"] = str(reported.get("s_L3_V", "0.0"))
+                    LIVE_SCADA_DATA["s3_i"] = str(reported.get("s_L3_I", "0.00"))
+                    LIVE_SCADA_DATA["s3_p"] = str(reported.get("s_L3_P", "0"))
+                    LIVE_SCADA_DATA["s3_q"] = str(reported.get("s_L3_Q", "0"))
+                    
+                    LIVE_SCADA_DATA["r1_v"] = str(reported.get("r_L1_V", "0.0"))
+                    LIVE_SCADA_DATA["r1_i"] = str(reported.get("r_L1_I", "0.00"))
+                    LIVE_SCADA_DATA["r1_p"] = str(reported.get("r_L1_P", "0"))
+                    LIVE_SCADA_DATA["r1_q"] = str(reported.get("r_L1_Q", "0"))
+                    
+                    LIVE_SCADA_DATA["r2_v"] = str(reported.get("r_L2_V", "0.0"))
+                    LIVE_SCADA_DATA["r2_i"] = str(reported.get("r_L2_I", "0.00"))
+                    LIVE_SCADA_DATA["r2_p"] = str(reported.get("r_L2_P", "0"))
+                    LIVE_SCADA_DATA["r2_q"] = str(reported.get("r_L2_Q", "0"))
+                    
+                    LIVE_SCADA_DATA["r3_v"] = str(reported.get("r_L3_V", "0.0"))
+                    LIVE_SCADA_DATA["r3_i"] = str(reported.get("r_L3_I", "0.00"))
+                    LIVE_SCADA_DATA["r3_p"] = str(reported.get("r_L3_P", "0"))
+                    LIVE_SCADA_DATA["r3_q"] = str(reported.get("r_L3_Q", "0"))
+                    
+                    LIVE_SCADA_DATA["relay_state"] = str(reported.get("relay_state", "SYSTEM ACTIVE"))
                         
-                    # 2. Map the local Substation data structure safely (Catches the negative float math bug)
-                    if "receiver" in reported:
-                        r = reported["receiver"]
-                        l1 = r.get('L1', {})
-                        l2 = r.get('L2', {})
-                        l3 = r.get('L3', {})                      
-                        LIVE_SCADA_DATA["receiver"] = {
-                            "L1": {"V": fmt_v(l1.get('V', 0)), "I": fmt_i(l1.get('I', 0))},
-                            "L2": {"V": fmt_v(l2.get('V', 0)), "I": fmt_i(l2.get('I', 0))},
-                            "L3": {"V": fmt_v(l3.get('V', 0)), "I": fmt_i(l3.get('I', 0))}
-                        }
-
-                    if "relay_state" in reported:
-                        LIVE_SCADA_DATA["relay_state"] = str(reported["relay_state"])
-                                               
         except Exception as e:
             print(f"💥 HTTP Ingestion Loop Error: {str(e)}", flush=True)
             
-        time.sleep(1)
-
+        time.sleep(3)
 
 # ================= HTML/JS VISUAL FRONT END =================
 
@@ -117,171 +119,139 @@ HTML_DASHBOARD = """
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Transmission Line Dashboard</title>
+    <title>Global SCADA Power Panel</title>
     <style>
         body { font-family: -apple-system, sans-serif; background: #0f172a; padding: 15px; margin: 0; color: #f8fafc; }
-        .container { max-width: 500px; margin: auto; }
+        .container { max-width: 650px; margin: auto; }
         h2 { text-align: center; color: #38bdf8; margin-bottom: 5px; }
         h5 { text-align: center; color: #94a3b8; margin-top: 0; font-weight: normal; }
         .card { background: #1e293b; padding: 20px; border-radius: 12px; margin-bottom: 15px; border: 1px solid #334155; }
-        .card-title { font-size: 11px; color: #38bdf8; text-transform: uppercase; font-weight: bold; }
-        .card-value { font-size: 26px; font-weight: bold; color: #f8fafc; margin-top: 5px; }
-        #.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 10px; }
-        .grid { 
-            display: grid; 
-            grid-template-columns: repeat(4, 1fr); /* 💡 Forces exactly 4 columns in one line */
-            gap: 10px; 
-            margin-top: 15px; 
-            border-bottom: 1px solid #334155; /* Visual separator line between L1, L2, L3 */
-            padding-bottom: 10px;
-        }
-        /* Remove the bottom border from the last row so it looks clean */
-        .grid:last-of-type { border-bottom: none; }       
+        .card-title { font-size: 12px; color: #38bdf8; text-transform: uppercase; font-weight: bold; margin-bottom: 10px; letter-spacing: 0.5px; }
+        .card-value { font-size: 15px; font-weight: bold; color: #f8fafc; margin-top: 4px; }
+        .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 12px; border-bottom: 1px solid #334155; padding-bottom: 8px; }
+        .grid:last-of-type { border-bottom: none; padding-bottom: 0; }
         .btn { width: 100%; padding: 14px; font-size: 15px; font-weight: bold; border: none; border-radius: 8px; color: white; cursor: pointer; margin-top: 10px; }
         .btn-on { background: #10b981; }
         .btn-off { background: #ef4444; }
         #status-bar { text-align: center; font-weight: bold; padding: 12px; border-radius: 8px; background: #334155; margin-top: 15px; color: #38bdf8; }
+        span.label { font-size: 10px; color: #64748b; text-transform: uppercase; display: block; }
     </style>
     <script>
         async function updateDashboard() {
             try {
-                // 🚀 Fetch the updated dictionary directly from your Render endpoint
                 const res = await fetch('/api/telemetry');
                 const data = await res.json();
                 
-                // 📡 1. Safely render the ESP32 Sending End data
-                if (data && data.sender && data.sender.L1) {
-                    try {
-                        document.getElementById('s1-v').innerText = (data.sender.L1.V || "0.00") + ' V';
-                        document.getElementById('s1-i').innerText = (data.sender.L1.I || "0.00") + ' A';
-                        document.getElementById('s1-p').innerText = (data.sender.L1.P || "0.00") + ' W';
-                        document.getElementById('s1-q').innerText = (data.sender.L1.Q || "0.00") + ' VAR';
-                        document.getElementById('s2-v').innerText = (data.sender.L2.V || "0.00") + ' V';
-                        document.getElementById('s2-i').innerText = (data.sender.L2.I || "0.00") + ' A';
-                        document.getElementById('s2-p').innerText = (data.sender.L2.P || "0.00") + ' W';
-                        document.getElementById('s2-q').innerText = (data.sender.L2.Q || "0.00") + ' VAR';
-                        document.getElementById('s3-v').innerText = (data.sender.L3.V || "0.00") + ' V';
-                        document.getElementById('s3-i').innerText = (data.sender.L3.I || "0.00") + ' A';
-                        document.getElementById('s3-p').innerText = (data.sender.L3.P || "0.00") + ' W';
-                        document.getElementById('s3-q').innerText = (data.sender.L3.Q || "0.00") + ' VAR';
-                    } catch(err) { console.log("Sender card drawing block protected."); }
-                }
+                // 📡 Update Transmission Sending End (SE-01) Elements inline
+                document.getElementById('s1-v').innerText = data.s1_v + ' V';
+                document.getElementById('s1-i').innerText = data.s1_i + ' A';
+                document.getElementById('s1-p').innerText = data.s1_p + ' W';
+                document.getElementById('s1-q').innerText = data.s1_q + ' var';
                 
-                // 🔌 2. Safely render the Raspberry Pi Receiving End data
-                if (data && data.receiver) {
-                    try {
-                        document.getElementById('r1-v').innerText = (data.receiver.L1.V || "0.00") + ' V';
-                        document.getElementById('r1-i').innerText = (data.receiver.L1.I || "0.00") + ' A';
-                        document.getElementById('r1-p').innerText = (data.receiver.L1.P || "0.00") + ' W';
-                        document.getElementById('r1-q').innerText = (data.receiver.L1.Q || "0.00") + ' VAR';
-                        document.getElementById('r2-v').innerText = (data.receiver.L2.V || "0.00") + ' V';
-                        document.getElementById('r2-i').innerText = (data.receiver.L2.I || "0.00") + ' A';
-                        document.getElementById('r2-p').innerText = (data.receiver.L2.P || "0.00") + ' W';
-                        document.getElementById('r2-q').innerText = (data.receiver.L2.Q || "0.00") + ' VAR';
-                        document.getElementById('r3-v').innerText = (data.receiver.L3.V || "0.00") + ' V';
-                        document.getElementById('r3-i').innerText = (data.receiver.L3.I || "0.00") + ' A';
-                        document.getElementById('r3-p').innerText = (data.receiver.L3.P || "0.00") + ' W';
-                        document.getElementById('r3-q').innerText = (data.receiver.L3.Q || "0.00") + ' VAR';
-                    } catch(err) { console.log("Receiver card drawing block protected."); }
-                }
+                document.getElementById('s2-v').innerText = data.s2_v + ' V';
+                document.getElementById('s2-i').innerText = data.s2_i + ' A';
+                document.getElementById('s2-p').innerText = data.s2_p + ' W';
+                document.getElementById('s2-q').innerText = data.s2_q + ' var';
                 
-                // 🛠️ 3. Render the operational relay tracking state
-                if (data && data.relay_state) {
-                    document.getElementById('status-bar').innerText = "SYSTEM STATE: " + data.relay_state;
-                }
+                document.getElementById('s3-v').innerText = data.s3_v + ' V';
+                document.getElementById('s3-i').innerText = data.s3_i + ' A';
+                document.getElementById('s3-p').innerText = data.s3_p + ' W';
+                document.getElementById('s3-q').innerText = data.s3_q + ' var';
                 
-            } catch (e) { 
-                console.log("Global JSON streaming parsing error caught securely."); 
-            }
+                // 🔌 Update Regulation Substation (RE-01) Elements inline
+                document.getElementById('r1-v').innerText = data.r1_v + ' V';
+                document.getElementById('r1-i').innerText = data.r1_i + ' A';
+                document.getElementById('r1-p').innerText = data.r1_p + ' W';
+                document.getElementById('r1-q').innerText = data.r1_q + ' var';
+                
+                document.getElementById('r2-v').innerText = data.r2_v + ' V';
+                document.getElementById('r2-i').innerText = data.r2_i + ' A';
+                document.getElementById('r2-p').innerText = data.r2_p + ' W';
+                document.getElementById('r2-q').innerText = data.r2_q + ' var';
+                
+                document.getElementById('r3-v').innerText = data.r3_v + ' V';
+                document.getElementById('r3-i').innerText = data.r3_i + ' A';
+                document.getElementById('r3-p').innerText = data.r3_p + ' W';
+                document.getElementById('r3-q').innerText = data.r3_q + ' var';
+                
+                document.getElementById('status-bar').innerText = "SYSTEM STATE: " + data.relay_state;
+            } catch (e) {}
         }
         
         async function sendCommand(state) {
             const statusBar = document.getElementById('status-bar');
             statusBar.innerText = `TRANSMITTING INTERNET OVERRIDE: FORCE ${state}...`;
-            statusBar.style.color = "#38bdf8"; // Changes to a warning blue shade
-            
+            statusBar.style.color = "#38bdf8";
             try {
                 const res = await fetch('/api/command', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({action: state})
                 });
-                
                 const out = await res.json();
-                
-                // 💡 CRITICAL FIX: Removed the blocking alert() completely!
-                // Instead, print the success log straight to the UI text stream.
                 statusBar.innerText = "✔ AZURE CONFIRMATION: " + out.message;
-                statusBar.style.color = "#10b981"; // Changes text to a success green shade
-                
-                // Execute an immediate telemetry pass now that the UI is unblocked
+                statusBar.style.color = "#10b981";
                 await updateDashboard();
-                
             } catch (error) { 
                 statusBar.innerText = "❌ CLOUD ROUTE BLOCKED: SYSTEM UNREACHABLE";
-                statusBar.style.color = "#ef4444"; // Changes text to a warning red shade
-                
-                // Run fallback pass on failure
+                statusBar.style.color = "#ef4444";
                 await updateDashboard();
             }
         }
-
-        
-        // Execute an immediate render pass on page launch, then poll every 2 seconds
-        updateDashboard();
         setInterval(updateDashboard, 2000);
     </script>
-
 </head>
 <body>
     <div class="container">
-        <h2>⚡ Transmission Line SCADA Panel</h2>
-        <h5>Kyle Christian V. Sta. Maria and Roneil Janry V. Areza Capstone Project</h5>
-        <h5>Mapúa MCL Electrical Engineering</h5>
+        <h2>⚡ Global SCADA Panel</h2>
+        <h5>Mapúa MCL Electrical Engineering Capstone</h5>
+        
         <div class="card">
             <div class="card-title">📡 Transmission Sending End (SE-01)</div>
             <div class="grid">
-                <div><span style="font-size:11px; color:#64748b;">L1 Voltage</span><div class="card-value" id="s1-v">0.00 V</div></div>
-                <div><span style="font-size:11px; color:#64748b;">L1 Current</span><div class="card-value" id="s1-i">0.00 A</div></div>
-                <div><span style="font-size:11px; color:#64748b;">L1 Active Power</span><div class="card-value" id="s1-p">0.00 V</div></div>
-                <div><span style="font-size:11px; color:#64748b;">L1 Reactive Power</span><div class="card-value" id="s1-q">0.00 A</div></div>
+                <div><span class="label">L1 Voltage</span><div class="card-value" id="s1-v">0.0 V</div></div>
+                <div><span class="label">L1 Current</span><div class="card-value" id="s1-i">0.00 A</div></div>
+                <div><span class="label">L1 Active</span><div class="card-value" id="s1-p">0 W</div></div>
+                <div><span class="label">L1 Reactive</span><div class="card-value" id="s1-q">0 var</div></div>
             </div>
             <div class="grid">
-                <div><span style="font-size:11px; color:#64748b;">L2 Voltage</span><div class="card-value" id="s2-v">0.00 V</div></div>
-                <div><span style="font-size:11px; color:#64748b;">L2 Current</span><div class="card-value" id="s2-i">0.00 A</div></div>
-                <div><span style="font-size:11px; color:#64748b;">L2 Active Power</span><div class="card-value" id="s2-p">0.00 V</div></div>
-                <div><span style="font-size:11px; color:#64748b;">L2 Reactive Power</span><div class="card-value" id="s2-q">0.00 A</div></div>
+                <div><span class="label">L2 Voltage</span><div class="card-value" id="s2-v">0.0 V</div></div>
+                <div><span class="label">L2 Current</span><div class="card-value" id="s2-i">0.00 A</div></div>
+                <div><span class="label">L2 Active</span><div class="card-value" id="s2-p">0 W</div></div>
+                <div><span class="label">L2 Reactive</span><div class="card-value" id="s2-q">0 var</div></div>
             </div>
             <div class="grid">
-                <div><span style="font-size:11px; color:#64748b;">L3 Voltage</span><div class="card-value" id="s3-v">0.00 V</div></div>
-                <div><span style="font-size:11px; color:#64748b;">L3 Current</span><div class="card-value" id="s3-i">0.00 A</div></div>
-                <div><span style="font-size:11px; color:#64748b;">L3 Active Power</span><div class="card-value" id="s3-p">0.00 V</div></div>
-                <div><span style="font-size:11px; color:#64748b;">L3 Reactive Power</span><div class="card-value" id="s3-q">0.00 A</div></div>
+                <div><span class="label">L3 Voltage</span><div class="card-value" id="s3-v">0.0 V</div></div>
+                <div><span class="label">L3 Current</span><div class="card-value" id="s3-i">0.00 A</div></div>
+                <div><span class="label">L3 Active</span><div class="card-value" id="s3-p">0 W</div></div>
+                <div><span class="label">L3 Reactive</span><div class="card-value" id="s3-q">0 var</div></div>
             </div>
         </div>
+
         <div class="card">
-            <div class="card-title">🔌 Transmission Line Receiving End (RE-01)</div>
+            <div class="card-title">🔌 Regulation Substation Receiving End (RE-01)</div>
             <div class="grid">
-                <div><span style="font-size:11px; color:#64748b;">L1 Voltage</span><div class="card-value" id="r1-v">0.00 V</div></div>
-                <div><span style="font-size:11px; color:#64748b;">L1 Current</span><div class="card-value" id="r1-i">0.00 A</div></div>
-                <div><span style="font-size:11px; color:#64748b;">L1 Active Power</span><div class="card-value" id="r1-p">0.00 V</div></div>
-                <div><span style="font-size:11px; color:#64748b;">L1 Reactive Power</span><div class="card-value" id="r1-q">0.00 A</div></div>
+                <div><span class="label">L1 Voltage</span><div class="card-value" id="r1-v">0.0 V</div></div>
+                <div><span class="label">L1 Current</span><div class="card-value" id="r1-i">0.00 A</div></div>
+                <div><span class="label">L1 Active</span><div class="card-value" id="r1-p">0 W</div></div>
+                <div><span class="label">L1 Reactive</span><div class="card-value" id="r1-q">0 var</div></div>
             </div>
             <div class="grid">
-                <div><span style="font-size:11px; color:#64748b;">L2 Voltage</span><div class="card-value" id="r2-v">0.00 V</div></div>
-                <div><span style="font-size:11px; color:#64748b;">L2 Current</span><div class="card-value" id="r2-i">0.00 A</div></div>
-                <div><span style="font-size:11px; color:#64748b;">L2 Active Power</span><div class="card-value" id="r2-p">0.00 V</div></div>
-                <div><span style="font-size:11px; color:#64748b;">L2 Reactive Power</span><div class="card-value" id="r2-q">0.00 A</div></div>
+                <div><span class="label">L2 Voltage</span><div class="card-value" id="r2-v">0.0 V</div></div>
+                <div><span class="label">L2 Current</span><div class="card-value" id="r2-i">0.00 A</div></div>
+                <div><span class="label">L2 Active</span><div class="card-value" id="r2-p">0 W</div></div>
+                <div><span class="label">L2 Reactive</span><div class="card-value" id="r2-q">0 var</div></div>
             </div>
             <div class="grid">
-                <div><span style="font-size:11px; color:#64748b;">L3 Voltage</span><div class="card-value" id="r3-v">0.00 V</div></div>
-                <div><span style="font-size:11px; color:#64748b;">L3 Current</span><div class="card-value" id="r3-i">0.00 A</div></div>
-                <div><span style="font-size:11px; color:#64748b;">L3 Active Power</span><div class="card-value" id="r3-p">0.00 V</div></div>
-                <div><span style="font-size:11px; color:#64748b;">L3 Reactive Power</span><div class="card-value" id="r3-q">0.00 A</div></div>
+                <div><span class="label">L3 Voltage</span><div class="card-value" id="r3-v">0.0 V</div></div>
+                <div><span class="label">L3 Current</span><div class="card-value" id="r3-i">0.00 A</div></div>
+                <div><span class="label">L3 Active</span><div class="card-value" id="r3-p">0 W</div></div>
+                <div><span class="label">L3 Reactive</span><div class="card-value" id="r3-q">0 var</div></div>
             </div>
         </div>
+
         <div class="card">
-            <div class="card-title">🚨 Voltage Regulator Relay Control Interface</div>
+            <div class="card-title">🚨 SCADA Control Interface</div>
             <button class="btn btn-on" onclick="sendCommand('ON')">FORCE RELAYS ACTIVE</button>
             <button class="btn btn-off" onclick="sendCommand('OFF')">RELEASE RELAYS / SYSTEM CLEAR</button>
             <div id="status-bar">RELAY OVERRIDE: FETCHING STATE...</div>
@@ -291,25 +261,19 @@ HTML_DASHBOARD = """
 </html>
 """
 
-# ================= HTTP SERVICE ROUTER ENDPOINTS =================
-
 @app.route('/')
 def home():
     return render_template_string(HTML_DASHBOARD)
 
-# 💡 TRACKING FLAG: Ensures the thread only spawns once per worker container
 SYNC_THREAD_STARTED = False
 
 @app.route('/api/telemetry')
 def api_get_telemetry():
     global SYNC_THREAD_STARTED
-    
-    # If this worker process hasn't started its thread yet, launch it now!
     if not SYNC_THREAD_STARTED:
         print("🚀 [WORKER INIT] Launching safe telemetry sync loop inside active web process...", flush=True)
         threading.Thread(target=scada_sync_loop, daemon=True).start()
         SYNC_THREAD_STARTED = True
-        
     return jsonify(LIVE_SCADA_DATA)
 
 @app.route('/api/command', methods=['POST'])
@@ -338,10 +302,6 @@ def api_send_command():
     except Exception:
         return jsonify({"status": "failed", "message": "Pi is offline or unreachable via Azure."}), 500
 
-
-# 💡 REMOVED: The old global scope thread start line is gone!
-
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
-
