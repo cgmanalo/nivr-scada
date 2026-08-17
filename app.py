@@ -1,3 +1,6 @@
+### =========================================================================
+### FILE 2: THE CENTRAL SCADA DASHBOARD BACKEND (app.py)
+### =========================================================================
 import os
 import json
 import time
@@ -13,11 +16,9 @@ from flask_cors import CORS
 app = Flask(__name__)
 CORS(app)
 
-# 🔑 Read the secure Master Key from the Render environment screen
 AZURE_CONN_STR = os.environ.get("AZURE_IOT_HUB_CONN_STR")
 PI_DEVICE_ID = "RE-01"
 
-# --- Live Global Memory Bank (Stores flat keys processed for UI rendering) ---
 LIVE_SCADA_DATA = {
     "s1_v": "0.0", "s1_i": "0.00", "s1_p": "0", "s1_q": "0",
     "s2_v": "0.0", "s2_i": "0.00", "s2_p": "0", "s2_q": "0",
@@ -25,37 +26,28 @@ LIVE_SCADA_DATA = {
     "r1_v": "0.0", "r1_i": "0.00", "r1_p": "0", "r1_q": "0",
     "r2_v": "0.0", "r2_i": "0.00", "r2_p": "0", "r2_q": "0",
     "r3_v": "0.0", "r3_i": "0.00", "r3_p": "0", "r3_q": "0",
-    "relay_state": "AWAITING FIELD DATA..."
+    "relay_state": "FETCHING STREAM DATA..."
 }
 
 def parse_connection_string(conn_str):
-    """Extracts credentials from standard connection strings safely"""
     props = dict(item.split('=', 1) for item in conn_str.split(';'))
     return props.get('HostName'), props.get('SharedAccessKeyName'), props.get('SharedAccessKey')
 
 def generate_sas_token(hub_host, key_name, key_val, target_uri, expiry_hours=1):
-    """Computes a secure temporary access token for the API call"""
     ttl = int(time.time()) + (expiry_hours * 3600)
     encoded_uri = quote_plus(target_uri)
     string_to_sign = f"{encoded_uri}\n{ttl}"
-    
     decoded_key = base64.b64decode(key_val)
     signature = hmac.new(decoded_key, string_to_sign.encode('utf-8'), hashlib.sha256).digest()
-    encoded_sig = quote_plus(base64.b64encode(signature).decode('utf-8'))
-    
-    return f"SharedAccessSignature sr={encoded_uri}&sig={encoded_sig}&se={ttl}&skn={key_name}"
+    return f"SharedAccessSignature sr={encoded_uri}&sig={quote_plus(base64.b64encode(signature).decode('utf-8'))}&se={ttl}&skn={key_name}"
 
 def scada_sync_loop():
-    """Pulls the flat field parameters from the Pi's Device Twin via HTTP REST"""
     global LIVE_SCADA_DATA
     print("🚀 [CLOUD SCADA] Background thread is actively running...", flush=True)
-    
     while True:
         if not AZURE_CONN_STR:
-            print("⚠️ [DEBUG ERROR] AZURE_IOT_HUB_CONN_STR environment variable is EMPTY!", flush=True)
             time.sleep(5)
             continue
-            
         try:
             host, key_name, key_val = parse_connection_string(AZURE_CONN_STR)
             target_uri = f"{host}/twins/{PI_DEVICE_ID}"
@@ -68,50 +60,23 @@ def scada_sync_loop():
             
             with urlopen(req, timeout=5) as response:
                 master_twin = json.loads(response.read().decode('utf-8'))
-                
                 if master_twin and "properties" in master_twin:
                     reported = master_twin["properties"].get("reported", {})
                     print(f"📦 [AZURE TWIN DATA RAW] -> {json.dumps(reported)}", flush=True)
                     
-                    # Intercept the flattened keys directly from the twin registry database without structural blocks
-                    LIVE_SCADA_DATA["s1_v"] = str(reported.get("s_L1_V", "0.0"))
-                    LIVE_SCADA_DATA["s1_i"] = str(reported.get("s_L1_I", "0.00"))
-                    LIVE_SCADA_DATA["s1_p"] = str(reported.get("s_L1_P", "0"))
-                    LIVE_SCADA_DATA["s1_q"] = str(reported.get("s_L1_Q", "0"))
-                    
-                    LIVE_SCADA_DATA["s2_v"] = str(reported.get("s_L2_V", "0.0"))
-                    LIVE_SCADA_DATA["s2_i"] = str(reported.get("s_L2_I", "0.00"))
-                    LIVE_SCADA_DATA["s2_p"] = str(reported.get("s_L2_P", "0"))
-                    LIVE_SCADA_DATA["s2_q"] = str(reported.get("s_L2_Q", "0"))
-                    
-                    LIVE_SCADA_DATA["s3_v"] = str(reported.get("s_L3_V", "0.0"))
-                    LIVE_SCADA_DATA["s3_i"] = str(reported.get("s_L3_I", "0.00"))
-                    LIVE_SCADA_DATA["s3_p"] = str(reported.get("s_L3_P", "0"))
-                    LIVE_SCADA_DATA["s3_q"] = str(reported.get("s_L3_Q", "0"))
-                    
-                    LIVE_SCADA_DATA["r1_v"] = str(reported.get("r_L1_V", "0.0"))
-                    LIVE_SCADA_DATA["r1_i"] = str(reported.get("r_L1_I", "0.00"))
-                    LIVE_SCADA_DATA["r1_p"] = str(reported.get("r_L1_P", "0"))
-                    LIVE_SCADA_DATA["r1_q"] = str(reported.get("r_L1_Q", "0"))
-                    
-                    LIVE_SCADA_DATA["r2_v"] = str(reported.get("r_L2_V", "0.0"))
-                    LIVE_SCADA_DATA["r2_i"] = str(reported.get("r_L2_I", "0.00"))
-                    LIVE_SCADA_DATA["r2_p"] = str(reported.get("r_L2_P", "0"))
-                    LIVE_SCADA_DATA["r2_q"] = str(reported.get("r_L2_Q", "0"))
-                    
-                    LIVE_SCADA_DATA["r3_v"] = str(reported.get("r_L3_V", "0.0"))
-                    LIVE_SCADA_DATA["r3_i"] = str(reported.get("r_L3_I", "0.00"))
-                    LIVE_SCADA_DATA["r3_p"] = str(reported.get("r_L3_P", "0"))
-                    LIVE_SCADA_DATA["r3_q"] = str(reported.get("r_L3_Q", "0"))
-                    
-                    LIVE_SCADA_DATA["relay_state"] = str(reported.get("relay_state", "SYSTEM ACTIVE"))
-                        
+                    # Read directly from clean, flat keys
+                    LIVE_SCADA_DATA.update({
+                        "s1_v": str(reported.get("s_L1_V", "0.0")), "s1_i": str(reported.get("s_L1_I", "0.00")), "s1_p": str(reported.get("s_L1_P", "0")), "s1_q": str(reported.get("s_L1_Q", "0")),
+                        "s2_v": str(reported.get("s_L2_V", "0.0")), "s2_i": str(reported.get("s_L2_I", "0.00")), "s2_p": str(reported.get("s_L2_P", "0")), "s2_q": str(reported.get("s_L2_Q", "0")),
+                        "s3_v": str(reported.get("s_L3_V", "0.0")), "s3_i": str(reported.get("s_L3_I", "0.00")), "s3_p": str(reported.get("s_L3_P", "0")), "s3_q": str(reported.get("s_L3_Q", "0")),
+                        "r1_v": str(reported.get("r_L1_V", "0.0")), "r1_i": str(reported.get("r_L1_I", "0.00")), "r1_p": str(reported.get("r_L1_P", "0")), "r1_q": str(reported.get("r_L1_Q", "0")),
+                        "r2_v": str(reported.get("r_L2_V", "0.0")), "r2_i": str(reported.get("r_L2_I", "0.00")), "r2_p": str(reported.get("r_L2_P", "0")), "r2_q": str(reported.get("r_L2_Q", "0")),
+                        "r3_v": str(reported.get("r_L3_V", "0.0")), "r3_i": str(reported.get("r_L3_I", "0.00")), "r3_p": str(reported.get("r_L3_P", "0")), "r3_q": str(reported.get("r_L3_Q", "0")),
+                        "relay_state": str(reported.get("relay_state", "SYSTEM READY"))
+                    })
         except Exception as e:
             print(f"💥 HTTP Ingestion Loop Error: {str(e)}", flush=True)
-            
         time.sleep(3)
-
-# ================= HTML/JS VISUAL FRONT END =================
 
 HTML_DASHBOARD = """
 <!DOCTYPE html>
@@ -126,13 +91,12 @@ HTML_DASHBOARD = """
         h2 { text-align: center; color: #38bdf8; margin-bottom: 5px; }
         h5 { text-align: center; color: #94a3b8; margin-top: 0; font-weight: normal; }
         .card { background: #1e293b; padding: 20px; border-radius: 12px; margin-bottom: 15px; border: 1px solid #334155; }
-        .card-title { font-size: 12px; color: #38bdf8; text-transform: uppercase; font-weight: bold; margin-bottom: 10px; letter-spacing: 0.5px; }
-        .card-value { font-size: 15px; font-weight: bold; color: #f8fafc; margin-top: 4px; }
+        .card-title { font-size: 12px; color: #38bdf8; text-transform: uppercase; font-weight: bold; margin-bottom: 10px; }
+        .card-value { font-size: 14px; font-weight: bold; color: #f8fafc; margin-top: 4px; }
         .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 12px; border-bottom: 1px solid #334155; padding-bottom: 8px; }
         .grid:last-of-type { border-bottom: none; padding-bottom: 0; }
         .btn { width: 100%; padding: 14px; font-size: 15px; font-weight: bold; border: none; border-radius: 8px; color: white; cursor: pointer; margin-top: 10px; }
-        .btn-on { background: #10b981; }
-        .btn-off { background: #ef4444; }
+        .btn-on { background: #10b981; } .btn-off { background: #ef4444; }
         #status-bar { text-align: center; font-weight: bold; padding: 12px; border-radius: 8px; background: #334155; margin-top: 15px; color: #38bdf8; }
         span.label { font-size: 10px; color: #64748b; text-transform: uppercase; display: block; }
     </style>
@@ -142,7 +106,6 @@ HTML_DASHBOARD = """
                 const res = await fetch('/api/telemetry');
                 const data = await res.json();
                 
-                // 📡 Update Transmission Sending End (SE-01) Elements inline
                 document.getElementById('s1-v').innerText = data.s1_v + ' V';
                 document.getElementById('s1-i').innerText = data.s1_i + ' A';
                 document.getElementById('s1-p').innerText = data.s1_p + ' W';
@@ -158,7 +121,6 @@ HTML_DASHBOARD = """
                 document.getElementById('s3-p').innerText = data.s3_p + ' W';
                 document.getElementById('s3-q').innerText = data.s3_q + ' var';
                 
-                // 🔌 Update Regulation Substation (RE-01) Elements inline
                 document.getElementById('r1-v').innerText = data.r1_v + ' V';
                 document.getElementById('r1-i').innerText = data.r1_i + ' A';
                 document.getElementById('r1-p').innerText = data.r1_p + ' W';
@@ -205,7 +167,6 @@ HTML_DASHBOARD = """
     <div class="container">
         <h2>⚡ Global SCADA Panel</h2>
         <h5>Mapúa MCL Electrical Engineering Capstone</h5>
-        
         <div class="card">
             <div class="card-title">📡 Transmission Sending End (SE-01)</div>
             <div class="grid">
@@ -227,7 +188,6 @@ HTML_DASHBOARD = """
                 <div><span class="label">L3 Reactive</span><div class="card-value" id="s3-q">0 var</div></div>
             </div>
         </div>
-
         <div class="card">
             <div class="card-title">🔌 Regulation Substation Receiving End (RE-01)</div>
             <div class="grid">
@@ -249,7 +209,6 @@ HTML_DASHBOARD = """
                 <div><span class="label">L3 Reactive</span><div class="card-value" id="r3-q">0 var</div></div>
             </div>
         </div>
-
         <div class="card">
             <div class="card-title">🚨 SCADA Control Interface</div>
             <button class="btn btn-on" onclick="sendCommand('ON')">FORCE RELAYS ACTIVE</button>
@@ -262,8 +221,7 @@ HTML_DASHBOARD = """
 """
 
 @app.route('/')
-def home():
-    return render_template_string(HTML_DASHBOARD)
+def home(): return render_template_string(HTML_DASHBOARD)
 
 SYNC_THREAD_STARTED = False
 
@@ -271,36 +229,27 @@ SYNC_THREAD_STARTED = False
 def api_get_telemetry():
     global SYNC_THREAD_STARTED
     if not SYNC_THREAD_STARTED:
-        print("🚀 [WORKER INIT] Launching safe telemetry sync loop inside active web process...", flush=True)
         threading.Thread(target=scada_sync_loop, daemon=True).start()
         SYNC_THREAD_STARTED = True
     return jsonify(LIVE_SCADA_DATA)
 
 @app.route('/api/command', methods=['POST'])
 def api_send_command():
-    if not AZURE_CONN_STR:
-        return jsonify({"status": "failed", "message": "Missing API Key configuration setup."}), 500
-        
+    if not AZURE_CONN_STR: return jsonify({"status": "failed", "message": "Missing Key"}), 500
     action = request.json.get("action")
     try:
         host, key_name, key_val = parse_connection_string(AZURE_CONN_STR)
         target_uri = f"{host}/twins/{PI_DEVICE_ID}"
         sas_token = generate_sas_token(host, key_name, key_val, target_uri)
-        
         url = f"https://{host}/twins/{PI_DEVICE_ID}/methods?api-version=2021-04-12"
         payload = json.dumps({"methodName": "SetRelay", "responseTimeoutInSeconds": 15, "payload": {"command": action}}).encode('utf-8')
-        
         req = Request(url, data=payload, method="POST")
         req.add_header("Authorization", sas_token)
         req.add_header("Content-Type", "application/json")
-        
         with urlopen(req, timeout=15) as response:
             res_data = json.loads(response.read().decode('utf-8'))
-            execution_msg = res_data.get("payload", {}).get("result", "Action completed.")
-            return jsonify({"status": "success", "message": execution_msg})
-            
-    except Exception:
-        return jsonify({"status": "failed", "message": "Pi is offline or unreachable via Azure."}), 500
+            return jsonify({"status": "success", "message": res_data.get("payload", {}).get("result", "Done")})
+    except Exception as e: return jsonify({"status": "failed", "message": str(e)}), 500
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
