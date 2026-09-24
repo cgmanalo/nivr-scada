@@ -239,7 +239,7 @@ HTML_DASHBOARD = """
         <h3>Kyle Christian V. Sta. Maria and Roneil Janry V. Areza Capstone Project</h3>
         <h5>Mapúa MCL Electrical Engineering</h5>
         <div class="card">
-            <div class="card-title">📡 Transmission Sending End (SE-01)</div>
+            <div class="card-title">📡 <h4>Transmission Sending End (SE-01)</h4></div>
             <div class="grid">
                 <div><span style="font-size:11px; color:#64748b;">L1 Voltage</span><div class="card-value" id="s1-v">0.00 V</div></div>
                 <div><span style="font-size:11px; color:#64748b;">L1 Current</span><div class="card-value" id="s1-i">0.00 A</div></div>
