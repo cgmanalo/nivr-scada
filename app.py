@@ -283,7 +283,8 @@ HTML_DASHBOARD = """
         <div class="card">
             <div class="card-title">🚨 Voltage Regulator Relay Control Interface</div>
             <!-- <button class="btn btn-on" onclick="sendCommand('ON')">1200</button> -->
-            <button class="btn btn-on" style="max-width: 150px;" onclick="sendCommand('ON-1200-M1')">1200</button>
+            <button id="btn-1200-M1" class="btn btn-on" style="max-width: 75px;" onclick="sendCommand('ON-1200-M1')">1200</button>
+            <button id="btn-600-M1" class="btn btn-on" style="max-width: 75px;" onclick="sendCommand('ON-600-M1')">1200</button>
             <button class="btn btn-off" onclick="sendCommand('OFF')">RELEASE RELAYS / SYSTEM CLEAR</button>
             <div id="status-bar">RELAY OVERRIDE: FETCHING STATE...</div>
         </div>
