@@ -197,7 +197,7 @@ HTML_DASHBOARD = """
         
         async function sendCommand(state) {
             const statusBar = document.getElementById('status-bar');
-            statusBar.innerText = `TRANSMITTING INTERNET OVERRIDE: FORCE ${state}...`;
+            statusBar.innerText = `TRANSMITTING INTERNET OVERRIDE: ${state}...`;
             statusBar.style.color = "#38bdf8"; // Changes to a warning blue shade
             
             try {
