@@ -212,7 +212,7 @@ HTML_DASHBOARD = """
                 // 💡 CRITICAL FIX: Removed the blocking alert() completely!
                 // Instead, print the success log straight to the UI text stream.
                 statusBar.innerText = "✔ AZURE CONFIRMATION: " + out.message;
-                //statusBar.style.color = "#10b981"; // Changes text to a success green shade
+                statusBar.style.color = "#10b981"; // Changes text to a success green shade
                 
                 // Execute an immediate telemetry pass now that the UI is unblocked
                 await updateDashboard();
@@ -282,7 +282,7 @@ HTML_DASHBOARD = """
         </div>
         <div class="card">
             <div class="card-title">🚨 Voltage Regulator Relay Control Interface</div>
-            <button class="btn btn-on" onclick="sendCommand('ON')">1200</button>
+            <!-- <button class="btn btn-on" onclick="sendCommand('ON')">1200</button> -->
             <button class="btn btn-off" onclick="sendCommand('OFF')">RELEASE RELAYS / SYSTEM CLEAR</button>
             <div id="status-bar">RELAY OVERRIDE: FETCHING STATE...</div>
         </div>
