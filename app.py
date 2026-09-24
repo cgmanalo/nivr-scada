@@ -236,7 +236,7 @@ HTML_DASHBOARD = """
 <body>
     <div class="container">
         <h2>⚡ Transmission Line SCADA Panel</h2>
-        <h5>Kyle Christian V. Sta. Maria and Roneil Janry V. Areza Capstone Project</h5>
+        <h3>Kyle Christian V. Sta. Maria and Roneil Janry V. Areza Capstone Project</h3>
         <h5>Mapúa MCL Electrical Engineering</h5>
         <div class="card">
             <div class="card-title">📡 Transmission Sending End (SE-01)</div>
