@@ -285,6 +285,7 @@ HTML_DASHBOARD = """
             <!-- <button class="btn btn-on" onclick="sendCommand('ON')">1200</button> -->
             <button id="btn-1200-M1" class="btn btn-on" style="max-width: 75px;" onclick="sendCommand('TOG-1200-M1')">1200</button>
             <button id="btn-600-M1" class="btn btn-on" style="max-width: 75px;" onclick="sendCommand('TOG-600-M1')">600</button>
+            <button id="btn-300-M1" class="btn btn-on" style="max-width: 75px;" onclick="sendCommand('TOG-300-M1')">300</button>
             <button class="btn btn-off" onclick="sendCommand('OFF')">RELEASE RELAYS / SYSTEM CLEAR</button>
             <div id="status-bar">RELAY OVERRIDE: FETCHING STATE...</div>
         </div>
