@@ -228,7 +228,7 @@ HTML_DASHBOARD = """
 
         
         // Execute an immediate render pass on page launch, then poll every 2 seconds
-        updateDashboard();
+        //updateDashboard();
         setInterval(updateDashboard, 2000);
     </script>
 
