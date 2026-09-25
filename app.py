@@ -25,9 +25,26 @@ PI_DEVICE_ID = "RE-01"
 
 # --- Live Global Memory Bank ---
 LIVE_SCADA_DATA = {
-    "sender": {"L1": {"V": 0.0, "I": 0.0}, "L2": {"V": 0.0, "I": 0.0}, "L3": {"V": 0.0, "I": 0.0}},
-    "receiver": {"L1": {"V": 0.0, "I": 0.0}, "L2": {"V": 0.0, "I": 0.0}, "L3": {"V": 0.0, "I": 0.0}},
-    "relay_state": {"M1_1200": 0, "M1_600": 0, "M1_300": 0, "M2_1200": 0, "M2_600": 0, "M2_300": 0}
+    "sender": {
+        "L1": {"V": 0.0, "I": 0.0},
+        "L2": {"V": 0.0, "I": 0.0},
+        "L3": {"V": 0.0, "I": 0.0}
+    },
+
+    "receiver": {
+        "L1": {"V": 0.0, "I": 0.0},
+        "L2": {"V": 0.0, "I": 0.0},
+        "L3": {"V": 0.0, "I": 0.0}
+    },
+
+    "relay_state": {
+        "RG1": "OFF",
+        "RG2": "OFF",
+        "RG3": "OFF",
+        "RG4": "OFF",
+        "RG5": "OFF",
+        "RG6": "OFF"
+    }
 }
 
 def parse_connection_string(conn_str):
@@ -101,11 +118,15 @@ def scada_sync_loop():
                         }
 
                     if "relay_state" in reported:
-                        #LIVE_SCADA_DATA["relay_state"] = str(reported["relay_state"])
                         r = reported["relay_state"]
+                        
                         LIVE_SCADA_DATA["relay_state"] = {
-                            "M1_1200":r.get('M1_1200',0), "M1_600":r.get('M1_600',0), "M1_300":r.get('M1_300',0), 
-                            "M2_1200":r.get('M2_1200',0), "M2_600":r.get('M2_600',0), "M2_300":r.get('M2_300',0)
+                            "RG1": r.get("RG1", "OFF"),
+                            "RG2": r.get("RG2", "OFF"),
+                            "RG3": r.get("RG3", "OFF"),
+                            "RG4": r.get("RG4", "OFF"),
+                            "RG5": r.get("RG5", "OFF"),
+                            "RG6": r.get("RG6", "OFF")
                         }
         except Exception as e:
             print(f"💥 HTTP Ingestion Loop Error: {str(e)}", flush=True)
@@ -192,8 +213,26 @@ HTML_DASHBOARD = """
                 // 🛠️ 3. Render the operational relay tracking state
                 if (data && data.relay_state) {
                     try {
-                        if (data.relay_state.M1_1200) {document.getElementById("btn-1200-M1").style.backgroundColor = "green";}
-                        else {document.getElementById("btn-1200-M1").style.backgroundColor = "red";}
+                        document.getElementById("btn-1200-M1").style.backgroundColor =
+                            data.relay_state.RG1 === "ON" ? "green" : "red";
+                
+                        document.getElementById("btn-600-M1").style.backgroundColor =
+                            data.relay_state.RG2 === "ON" ? "green" : "red";
+                
+                        document.getElementById("btn-300-M1").style.backgroundColor =
+                            data.relay_state.RG3 === "ON" ? "green" : "red";
+                
+                        document.getElementById("btn-1200-M2").style.backgroundColor =
+                            data.relay_state.RG4 === "ON" ? "green" : "red";
+                
+                        document.getElementById("btn-600-M2").style.backgroundColor =
+                            data.relay_state.RG5 === "ON" ? "green" : "red";
+                
+                        document.getElementById("btn-300-M2").style.backgroundColor =
+                            data.relay_state.RG6 === "ON" ? "green" : "red";
+                
+                    } catch (e) {
+                        console.log("Relay state rendering error.");
                     }
                 }
                 
