@@ -186,9 +186,9 @@ HTML_DASHBOARD = """
                 }
                 
                 // 🛠️ 3. Render the operational relay tracking state
-                if (data && data.relay_state) {
-                    document.getElementById('status-bar').innerText = "SYSTEM STATE: " + data.relay_state;
-                }
+                //if (data && data.relay_state) {
+                //    document.getElementById('status-bar').innerText = "SYSTEM STATE: " + data.relay_state;
+                //}
                 
             } catch (e) { 
                 console.log("Global JSON streaming parsing error caught securely."); 
@@ -211,7 +211,7 @@ HTML_DASHBOARD = """
                 
                 // 💡 CRITICAL FIX: Removed the blocking alert() completely!
                 // Instead, print the success log straight to the UI text stream.
-                statusBar.innerText = "✔ AZURE CONFIRMATION: " + out.message;
+                statusBar.innerText = out.message;
                 statusBar.style.color = "#10b981"; // Changes text to a success green shade
                 
                 // Execute an immediate telemetry pass now that the UI is unblocked
