@@ -106,7 +106,7 @@ def scada_sync_loop():
         except Exception as e:
             print(f"💥 HTTP Ingestion Loop Error: {str(e)}", flush=True)
             
-        time.sleep(1)
+        time.sleep(20)
 
 
 # ================= HTML/JS VISUAL FRONT END =================
