@@ -215,14 +215,14 @@ HTML_DASHBOARD = """
                 statusBar.style.color = "#10b981"; // Changes text to a success green shade
                 
                 // Execute an immediate telemetry pass now that the UI is unblocked
-                await updateDashboard();
+                //await updateDashboard();
                 
             } catch (error) { 
                 statusBar.innerText = "❌ CLOUD ROUTE BLOCKED: SYSTEM UNREACHABLE";
                 statusBar.style.color = "#ef4444"; // Changes text to a warning red shade
                 
                 // Run fallback pass on failure
-                await updateDashboard();
+                //await updateDashboard();
             }
         }
 
