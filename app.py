@@ -231,6 +231,24 @@ HTML_DASHBOARD = """
                 else if(out.message === "300-M1-OFF") {
                    document.getElementById("btn-300-M1").style.backgroundColor = "red";
                 }
+                else if (out.message === "1200-M2-ON") {
+                   document.getElementById("btn-1200-M2").style.backgroundColor = "green";
+                }
+                else if(out.message === "1200-M2-OFF") {
+                   document.getElementById("btn-1200-M2").style.backgroundColor = "red";
+                }
+                else if (out.message === "600-M2-ON") {
+                   document.getElementById("btn-600-M2").style.backgroundColor = "green";
+                }
+                else if(out.message === "600-M2-OFF") {
+                   document.getElementById("btn-600-M2").style.backgroundColor = "red";
+                }
+                else if (out.message === "300-M2-ON") {
+                   document.getElementById("btn-300-M2").style.backgroundColor = "green";
+                }
+                else if(out.message === "300-M2-OFF") {
+                   document.getElementById("btn-300-M2").style.backgroundColor = "red";
+                }
                 // Execute an immediate telemetry pass now that the UI is unblocked
                 //await updateDashboard();
                 
@@ -299,12 +317,12 @@ HTML_DASHBOARD = """
         </div>
         <div class="card">
             <div class="card-title">🚨 Voltage Regulator Relay Control Interface</div>
-            <button id="btn-1200-M1" class="btn btn-on" style="max-width: 75px;" onclick="sendCommand('TOG-1200-M1')">1200</button>
-            <button id="btn-600-M1" class="btn btn-on" style="max-width: 75px;" onclick="sendCommand('TOG-600-M1')">600</button>
-            <button id="btn-300-M1" class="btn btn-on" style="max-width: 75px;" onclick="sendCommand('TOG-300-M1')">300</button>
-            <button id="btn-1200-M2" class="btn btn-on" style="max-width: 75px;" onclick="sendCommand('TOG-1200-M2')">1200</button>
-            <button id="btn-600-M2" class="btn btn-on" style="max-width: 75px;" onclick="sendCommand('TOG-600-M2')">600</button>
-            <button id="btn-300-M2" class="btn btn-on" style="max-width: 75px;" onclick="sendCommand('TOG-300-M2')">300</button>
+            <button id="btn-1200-M1" class="btn btn-on" style="max-width: 70px;" onclick="sendCommand('TOG-1200-M1')">1200</button>
+            <button id="btn-600-M1" class="btn btn-on" style="max-width: 70px;" onclick="sendCommand('TOG-600-M1')">600</button>
+            <button id="btn-300-M1" class="btn btn-on" style="max-width: 70px;" onclick="sendCommand('TOG-300-M1')">300</button>
+            <button id="btn-1200-M2" class="btn btn-on" style="max-width: 70px;" onclick="sendCommand('TOG-1200-M2')">1200</button>
+            <button id="btn-600-M2" class="btn btn-on" style="max-width: 70px;" onclick="sendCommand('TOG-600-M2')">600</button>
+            <button id="btn-300-M2" class="btn btn-on" style="max-width: 70px;" onclick="sendCommand('TOG-300-M2')">300</button>
             <button class="btn btn-off" onclick="sendCommand('OFF')">RELEASE RELAYS / SYSTEM CLEAR</button>
             <div id="status-bar">RELAY OVERRIDE: FETCHING STATE...</div>
         </div>
