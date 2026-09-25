@@ -222,7 +222,7 @@ HTML_DASHBOARD = """
                 statusBar.style.color = "#ef4444"; // Changes text to a warning red shade
                 
                 // Run fallback pass on failure
-                //await updateDashboard();
+                await updateDashboard();
             }
         }
 
