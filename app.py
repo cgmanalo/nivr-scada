@@ -27,7 +27,7 @@ PI_DEVICE_ID = "RE-01"
 LIVE_SCADA_DATA = {
     "sender": {"L1": {"V": 0.0, "I": 0.0}, "L2": {"V": 0.0, "I": 0.0}, "L3": {"V": 0.0, "I": 0.0}},
     "receiver": {"L1": {"V": 0.0, "I": 0.0}, "L2": {"V": 0.0, "I": 0.0}, "L3": {"V": 0.0, "I": 0.0}},
-    "relay_state": "AWAITING FIELD DATA..."
+    "relay_state": {"M1_1200": 0, "M1_600": 0, "M1_300": 0, "M2_1200": 0, "M2_600": 0, "M2_300": 0}
 }
 
 def parse_connection_string(conn_str):
@@ -101,8 +101,12 @@ def scada_sync_loop():
                         }
 
                     if "relay_state" in reported:
-                        LIVE_SCADA_DATA["relay_state"] = str(reported["relay_state"])
-                                               
+                        #LIVE_SCADA_DATA["relay_state"] = str(reported["relay_state"])
+                        r = reported["relay_state"]
+                        LIVE_SCADA_DATA["relay_state"] = {
+                            "M1_1200":r.get('M1_1200',0), "M1_600":r.get('M1_600',0), "M1_300":r.get('M1_300',0), 
+                            "M2_1200":r.get('M2_1200',0), "M2_600":r.get('M2_600',0), "M2_300":r.get('M2_300',0)
+                        }
         except Exception as e:
             print(f"💥 HTTP Ingestion Loop Error: {str(e)}", flush=True)
             
@@ -186,9 +190,12 @@ HTML_DASHBOARD = """
                 }
                 
                 // 🛠️ 3. Render the operational relay tracking state
-                //if (data && data.relay_state) {
-                //    document.getElementById('status-bar').innerText = "SYSTEM STATE: " + data.relay_state;
-                //}
+                if (data && data.relay_state) {
+                    try {
+                        if (data.relay_state.M1_1200) {document.getElementById("btn-1200-M1").style.backgroundColor = "green";}
+                        else {document.getElementById("btn-1200-M1").style.backgroundColor = "red";}
+                    }
+                }
                 
             } catch (e) { 
                 console.log("Global JSON streaming parsing error caught securely."); 
