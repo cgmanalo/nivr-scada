@@ -213,7 +213,12 @@ HTML_DASHBOARD = """
                 // Instead, print the success log straight to the UI text stream.
                 statusBar.innerText = out.message;
                 statusBar.style.color = "#10b981"; // Changes text to a success green shade
-                
+                if (out.message === "1200-M1-ON") {
+                   document.getElementById("btn-1200-M1").style.backgroundColor = "green";
+                }
+                else if(out.message === "1200-M1-OFF") {
+                   document.getElementById("btn-1200-M1").style.backgroundColor = "green";
+                }
                 // Execute an immediate telemetry pass now that the UI is unblocked
                 //await updateDashboard();
                 
