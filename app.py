@@ -217,7 +217,19 @@ HTML_DASHBOARD = """
                    document.getElementById("btn-1200-M1").style.backgroundColor = "green";
                 }
                 else if(out.message === "1200-M1-OFF") {
-                   document.getElementById("btn-1200-M1").style.backgroundColor = "green";
+                   document.getElementById("btn-1200-M1").style.backgroundColor = "red";
+                }
+                else if (out.message === "600-M1-ON") {
+                   document.getElementById("btn-600-M1").style.backgroundColor = "green";
+                }
+                else if(out.message === "600-M1-OFF") {
+                   document.getElementById("btn-600-M1").style.backgroundColor = "red";
+                }
+                else if (out.message === "300-M1-ON") {
+                   document.getElementById("btn-300-M1").style.backgroundColor = "green";
+                }
+                else if(out.message === "300-M1-OFF") {
+                   document.getElementById("btn-300-M1").style.backgroundColor = "red";
                 }
                 // Execute an immediate telemetry pass now that the UI is unblocked
                 //await updateDashboard();
