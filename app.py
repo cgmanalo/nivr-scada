@@ -445,7 +445,14 @@ def api_send_command():
                 LIVE_SCADA_DATA["relay_state"]["RG6"] = "ON"
             elif execution_msg == "300-M2-OFF":
                 LIVE_SCADA_DATA["relay_state"]["RG6"] = "OFF"
-            
+            elif execution_msg == "OFFALL":
+                LIVE_SCADA_DATA["relay_state"]["RG1"] = "OFF"
+                LIVE_SCADA_DATA["relay_state"]["RG2"] = "OFF"
+                LIVE_SCADA_DATA["relay_state"]["RG3"] = "OFF"
+                LIVE_SCADA_DATA["relay_state"]["RG4"] = "OFF"
+                LIVE_SCADA_DATA["relay_state"]["RG5"] = "OFF"
+                LIVE_SCADA_DATA["relay_state"]["RG6"] = "OFF"
+                
             return jsonify({"status": "success", "message": execution_msg})
             
     except Exception:
