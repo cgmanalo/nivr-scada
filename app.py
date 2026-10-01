@@ -402,6 +402,7 @@ def api_get_telemetry():
 
 @app.route('/api/command', methods=['POST'])
 def api_send_command():
+    global LIVE_SCADA_DATA
     if not AZURE_CONN_STR:
         return jsonify({"status": "failed", "message": "Missing API Key configuration setup."}), 500
         
@@ -421,6 +422,12 @@ def api_send_command():
         with urlopen(req, timeout=15) as response:
             res_data = json.loads(response.read().decode('utf-8'))
             execution_msg = res_data.get("payload", {}).get("result", "Action completed.")
+            
+            if execution_msg == "1200-M1-ON":
+                LIVE_SCADA_DATA["relay_state"]["RG3"] = "ON"
+            elif execution_msg == "1200-M1-OFF":
+                LIVE_SCADA_DATA["relay_state"]["RG3"] = "OFF"
+            
             return jsonify({"status": "success", "message": execution_msg})
             
     except Exception:
