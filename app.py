@@ -424,9 +424,9 @@ def api_send_command():
             execution_msg = res_data.get("payload", {}).get("result", "Action completed.")
             
             if execution_msg == "1200-M1-ON":
-                LIVE_SCADA_DATA["relay_state"]["RG3"] = "ON"
+                LIVE_SCADA_DATA["relay_state"]["RG1"] = "ON"
             elif execution_msg == "1200-M1-OFF":
-                LIVE_SCADA_DATA["relay_state"]["RG3"] = "OFF"
+                LIVE_SCADA_DATA["relay_state"]["RG1"] = "OFF"
             
             return jsonify({"status": "success", "message": execution_msg})
             
