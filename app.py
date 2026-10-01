@@ -261,11 +261,9 @@ HTML_DASHBOARD = """
                 statusBar.style.color = "#10b981"; // Changes text to a success green shade
                 if (out.message === "1200-M1-ON") {
                    document.getElementById("btn-1200-M1").style.backgroundColor = "green";
-                   //LIVE_SCADA_DATA["relay_state"]["RG3"] = "ON"
                 }
                 else if(out.message === "1200-M1-OFF") {
                    document.getElementById("btn-1200-M1").style.backgroundColor = "red";
-                   //LIVE_SCADA_DATA["relay_state"]["RG3"] = "OFF"
                 }
                 else if (out.message === "600-M1-ON") {
                    document.getElementById("btn-600-M1").style.backgroundColor = "green";
@@ -427,6 +425,26 @@ def api_send_command():
                 LIVE_SCADA_DATA["relay_state"]["RG1"] = "ON"
             elif execution_msg == "1200-M1-OFF":
                 LIVE_SCADA_DATA["relay_state"]["RG1"] = "OFF"
+            elif execution_msg == "600-M1-ON":
+                LIVE_SCADA_DATA["relay_state"]["RG2"] = "ON"
+            elif execution_msg == "600-M1-OFF":
+                LIVE_SCADA_DATA["relay_state"]["RG2"] = "OFF"
+            elif execution_msg == "300-M1-ON":
+                LIVE_SCADA_DATA["relay_state"]["RG3"] = "ON"
+            elif execution_msg == "300-M1-OFF":
+                LIVE_SCADA_DATA["relay_state"]["RG3"] = "OFF"
+            elif execution_msg == "1200-M2-ON":
+                LIVE_SCADA_DATA["relay_state"]["RG4"] = "ON"
+            elif execution_msg == "1200-M2-OFF":
+                LIVE_SCADA_DATA["relay_state"]["RG4"] = "OFF"
+            elif execution_msg == "600-M2-ON":
+                LIVE_SCADA_DATA["relay_state"]["RG5"] = "ON"
+            elif execution_msg == "600-M2-OFF":
+                LIVE_SCADA_DATA["relay_state"]["RG5"] = "OFF"
+            elif execution_msg == "300-M2-ON":
+                LIVE_SCADA_DATA["relay_state"]["RG6"] = "ON"
+            elif execution_msg == "300-M2-OFF":
+                LIVE_SCADA_DATA["relay_state"]["RG6"] = "OFF"
             
             return jsonify({"status": "success", "message": execution_msg})
             
