@@ -261,11 +261,11 @@ HTML_DASHBOARD = """
                 statusBar.style.color = "#10b981"; // Changes text to a success green shade
                 if (out.message === "1200-M1-ON") {
                    document.getElementById("btn-1200-M1").style.backgroundColor = "green";
-                   LIVE_SCADA_DATA["relay_state"] = {"RG1": "ON"}
+                   LIVE_SCADA_DATA["relay_state"]["RG3"] = "ON"
                 }
                 else if(out.message === "1200-M1-OFF") {
                    document.getElementById("btn-1200-M1").style.backgroundColor = "red";
-                   LIVE_SCADA_DATA["relay_state"] = {"RG1": "OFF"}
+                   LIVE_SCADA_DATA["relay_state"]["RG3"] = "OFF"
                 }
                 else if (out.message === "600-M1-ON") {
                    document.getElementById("btn-600-M1").style.backgroundColor = "green";
