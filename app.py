@@ -341,7 +341,7 @@ HTML_DASHBOARD = """
             </div>
         </div>
         <div class="card">
-            <div class="card-title">🔌 Transmission Line Receiving End (RE-01)</div>
+            <div class="card-title"><h3>🔌 Transmission Line Receiving End (RE-01)</h3></div>
             <div class="grid">
                 <div><span style="font-size:11px; color:#64748b;">L1 Voltage</span><div class="card-value" id="r1-v">0.00 V</div></div>
                 <div><span style="font-size:11px; color:#64748b;">L1 Current</span><div class="card-value" id="r1-i">0.00 A</div></div>
@@ -362,7 +362,7 @@ HTML_DASHBOARD = """
             </div>
         </div>
         <div class="card">
-            <div class="card-title">🚨 Voltage Regulator Relay Control Interface</div>
+            <div class="card-title"><h3>🚨 Voltage Regulator Relay Control Interface</h3></div>
             <button id="btn-1200-M1" class="btn btn-on" style="max-width: 70px;" onclick="sendCommand('TOG-1200-M1')">1200</button>
             <button id="btn-600-M1" class="btn btn-on" style="max-width: 70px;" onclick="sendCommand('TOG-600-M1')">600</button>
             <button id="btn-300-M1" class="btn btn-on" style="max-width: 70px;" onclick="sendCommand('TOG-300-M1')">300</button>
