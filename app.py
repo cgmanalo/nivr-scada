@@ -322,7 +322,7 @@ HTML_DASHBOARD = """
         <div class="card">
             <div class="card-title"><h3>📡Transmission Sending End (SE-01)</h3></div>
             <div class="grid">
-                <div><span style="font-size:11px; color:#64748b;">L1 Voltage</span><div class="card-value" id="s1-v">0.00 V</div></div>
+                <div><span style="font-size:11px; color:#64748b;"><h4>L1 Voltage</span></h4><div class="card-value" id="s1-v">0.00 V</div></div>
                 <div><span style="font-size:11px; color:#64748b;">L1 Current</span><div class="card-value" id="s1-i">0.00 A</div></div>
                 <div><span style="font-size:11px; color:#64748b;">L1 Active Power</span><div class="card-value" id="s1-p">0.00 V</div></div>
                 <div><span style="font-size:11px; color:#64748b;">L1 Reactive Power</span><div class="card-value" id="s1-q">0.00 A</div></div>
