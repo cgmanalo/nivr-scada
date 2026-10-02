@@ -369,7 +369,7 @@ HTML_DASHBOARD = """
             <button id="btn-1200-M2" class="btn btn-on" style="max-width: 70px;" onclick="sendCommand('TOG-1200-M2')">1200</button>
             <button id="btn-600-M2" class="btn btn-on" style="max-width: 70px;" onclick="sendCommand('TOG-600-M2')">600</button>
             <button id="btn-300-M2" class="btn btn-on" style="max-width: 70px;" onclick="sendCommand('TOG-300-M2')">300</button>
-            <button class="btn btn-off" onclick="sendCommand('OFFALL')">RELEASE RELAYS / SYSTEM CLEAR</button>
+            <button class="btn btn-off" onclick="sendCommand('OFFALL')">DISCONNECT ALL CAPACITOR BANKS</button>
             <div id="status-bar">RELAY OVERRIDE: FETCHING STATE...</div>
         </div>
     </div>
